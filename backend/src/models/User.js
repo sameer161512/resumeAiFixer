@@ -12,6 +12,10 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
     passwordHash: { type: String, required: true },
+    // ✅ Email verification fields
+    isEmailVerified: { type: Boolean, default: false },
+    emailOtpHash: { type: String, default: null },
+    emailOtpExpiresAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
