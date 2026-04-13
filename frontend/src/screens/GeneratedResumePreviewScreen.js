@@ -5,9 +5,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeContext";
 import ScreenHeader from "../components/ScreenHeader";
 
-export default function GeneratedResumePreviewScreen({ navigation }) {
+export default function GeneratedResumePreviewScreen({ navigation, route }) {
     const { colors, mode } = useTheme();
     const styles = useMemo(() => makeStyles(colors, mode), [colors, mode]);
+
+    const formData = route?.params?.formData || null;
 
     return (
         <SafeAreaView style={styles.safe} edges={["top"]}>

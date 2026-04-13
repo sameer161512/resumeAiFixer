@@ -84,7 +84,8 @@ const TEMPLATE_PREVIEW_IMAGES = {
 };
 
 export default function TemplateSelectScreen({ navigation, route }) {
-const generatedResume = route?.params?.generatedResume || null;
+const generatedResume =
+  route?.params?.generatedResume || route?.params?.generatedData || null;
   const { colors, mode } = useTheme();
   const styles = useMemo(() => makeStyles(colors, mode), [colors, mode]);
 

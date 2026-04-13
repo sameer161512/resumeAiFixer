@@ -70,7 +70,8 @@ router.post("/analyze", upload.single("resume"), async (req, res) => {
     if (!isImage && !isDocument) {
       return res.status(400).json({
         ok: false,
-        message: "Only PDF, DOCX, JPG, JPEG, PNG, and WEBP files are supported right now.",
+        message:
+          "Only PDF, DOCX, JPG, JPEG, PNG, and WEBP files are supported right now.",
       });
     }
 
@@ -148,7 +149,8 @@ Rules:
       if (!resumeText) {
         return res.status(400).json({
           ok: false,
-          message: "Could not extract text from this file. Upload a text-based PDF or DOCX, or use an image.",
+          message:
+            "Could not extract text from this file. Upload a text-based PDF or DOCX, or use an image.",
         });
       }
 
@@ -261,20 +263,30 @@ Rules:
 - Use modern concise wording.
 - If exact details are missing, infer carefully and keep them generic.
 `;
-    const geminiResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
-      ],
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
 
-    const raw = geminiResponse.text || "";
+    let aiResponse;
+    let attempts = 0;
+
+    while (attempts < 3) {
+      try {
+        aiResponse = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: prompt,
+        });
+        break; // success → exit loop
+      } catch (err) {
+        attempts++;
+
+        if (attempts >= 3) {
+          throw err; // fail after 3 tries
+        }
+
+        console.log("Retrying Gemini...", attempts);
+        await new Promise((res) => setTimeout(res, 1500)); // wait 1.5 sec
+      }
+    }
+
+    const raw = aiResponse.text || "";
     let parsed;
 
     try {
@@ -297,6 +309,138 @@ Rules:
     return res.status(500).json({
       ok: false,
       message: error.message || "Failed to generate fixed resume.",
+    });
+  }
+});
+
+router.post("/generate-from-scratch", async (req, res) => {
+  try {
+    const {
+      fullName,
+      targetRole,
+      email,
+      phone,
+      city,
+      skills,
+      education,
+      objective,
+      projects,
+    } = req.body;
+
+    if (
+      !fullName ||
+      !targetRole ||
+      !email ||
+      !phone ||
+      !city ||
+      !skills ||
+      !education ||
+      !objective ||
+      !projects
+    ) {
+      return res.status(400).json({
+        message: "All fields are required",
+      });
+    }
+
+    const prompt = `
+You are an expert ATS resume writer.
+
+Create a professional resume in JSON format using the user's details below.
+
+User details:
+- Full Name: ${fullName}
+- Target Role: ${targetRole}
+- Email: ${email}
+- Phone: ${phone}
+- City: ${city}
+- Skills: ${skills}
+- Education: ${education}
+- Career Objective: ${objective}
+- Projects / Achievements: ${projects}
+
+Return ONLY valid JSON in this exact structure:
+
+{
+  "fullName": "",
+  "targetRole": "",
+  "email": "",
+  "phone": "",
+  "location": "",
+  "summary": "",
+  "skills": [],
+  "experience": [],
+  "projects": [],
+  "education": []
+}
+
+Rules:
+- Make the summary strong, professional, and ATS-friendly.
+- Convert skills into a clean array.
+- If real work experience is not provided, keep "experience" as an empty array.
+- Convert projects into array objects like:
+  { "name": "...", "details": ["...", "..."] }
+- Convert education into array objects like:
+  { "degree": "...", "school": "...", "year": "..." }
+- Use the provided city as "location".
+- Do not add markdown.
+- Do not wrap in triple backticks.
+`;
+
+    let aiResponse;
+    let attempts = 0;
+
+    while (attempts < 3) {
+      try {
+        aiResponse = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+          },
+        });
+        break;
+      } catch (err) {
+        attempts++;
+
+        if (attempts >= 3) {
+          throw err;
+        }
+
+        console.log("Retrying generate-from-scratch Gemini...", attempts);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+    }
+
+    const rawText = aiResponse?.text?.trim();
+
+    if (!rawText) {
+      return res.status(500).json({
+        message: "Empty response from AI",
+      });
+    }
+
+    let parsedResume;
+
+    try {
+      parsedResume = JSON.parse(rawText);
+    } catch (parseError) {
+      console.log("AI JSON parse error:", parseError);
+      console.log("Raw AI response:", rawText);
+      return res.status(500).json({
+        message: "AI returned invalid JSON",
+        raw: rawText,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Resume generated successfully",
+      resume: parsedResume,
+    });
+  } catch (error) {
+    console.log("generate-from-scratch error:", error);
+    return res.status(500).json({
+      message: error?.message || "Something went wrong",
     });
   }
 });
