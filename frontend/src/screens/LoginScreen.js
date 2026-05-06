@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Animated,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AppInput from "../components/AppInput";
 import AppButton from "../components/AppButton";
 import { useTheme } from "../theme/ThemeContext";
@@ -18,15 +19,10 @@ import { loginApi } from "../config/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import LinearGradient from "react-native-linear-gradient";
 import MaskedView from "@react-native-masked-view/masked-view";
-import { Animated } from "react-native";
-import { useEffect, useRef } from "react";
 
 export default function LoginScreen({ navigation }) {
   const { colors, mode } = useTheme();
-  const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(colors, mode), [colors, mode]);
-
-  const settingsTop = insets.top + 6;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,17 +48,26 @@ export default function LoginScreen({ navigation }) {
         }),
       ])
     ).start();
-  }, []);
+  }, [glowAnim]);
 
   useEffect(() => {
+    borderAnim.setValue(0);
+
     Animated.loop(
-      Animated.timing(borderAnim, {
-        toValue: 1,
-        duration: 6000,
-        useNativeDriver: false,
-      })
+      Animated.sequence([
+        Animated.timing(borderAnim, {
+          toValue: 1,
+          duration: 5000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(borderAnim, {
+          toValue: 0,
+          duration: 5000,
+          useNativeDriver: true,
+        }),
+      ])
     ).start();
-  }, []);
+  }, [borderAnim]);
 
   function validate() {
     const nextErrors = {};
@@ -70,8 +75,9 @@ export default function LoginScreen({ navigation }) {
     const pass = (password || "").trim();
 
     if (!mail) nextErrors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail))
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
       nextErrors.email = "Enter a valid email";
+    }
 
     if (!pass) nextErrors.password = "Password is required";
 
@@ -117,16 +123,10 @@ export default function LoginScreen({ navigation }) {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <Pressable
-          onPress={() => navigation.navigate("Settings")}
-          style={[styles.settingsBtn, { top: settingsTop }]}
-        >
-          <Icon name="settings-outline" size={20} color={colors.text} />
-        </Pressable>
-
         <ScrollView
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.hero}>
             <Animated.View
@@ -137,62 +137,88 @@ export default function LoginScreen({ navigation }) {
                     {
                       translateX: glowAnim.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [-30, 30],
+                        outputRange: [-18, 22],
+                      }),
+                    },
+                    {
+                      translateY: glowAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, 14],
+                      }),
+                    },
+                    {
+                      scale: glowAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 1.06],
                       }),
                     },
                   ],
                 },
               ]}
             />
+
             <View style={styles.aiChip}>
               <Text style={styles.aiChipText}>AI Resume Assistant</Text>
             </View>
 
-            <Text style={styles.brand}>ResumeAIFixer</Text>
+            {/* <Text style={styles.brand}>ResumeAIFixer</Text> */}
 
-            <MaskedView
-              maskElement={
-                <Text style={styles.heading}>
-                  Fix your resume {"\n"}with precision
-                </Text>
-              }
-            >
-              <Animated.View
-                style={{
-                  borderRadius: 30,
-                  transform: [
-                    {
-                      translateX: borderAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-2, 2],
-                      }),
-                    },
-                  ],
-                }}
-              >
-                <LinearGradient
-                  colors={["#A5B4FC", "#6366F1", "#4F46E5"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={[styles.heading, { opacity: 0 }]}>
-                    Fix your resume {"\n"}with precision
+            <View style={styles.headingWrap}>
+              <MaskedView
+                maskElement={
+                  <Text style={styles.heading}>
+                    Build or Fix your{"\n"}Resume with AI
                   </Text>
-                </LinearGradient>
-              </Animated.View>
-            </MaskedView>
+                }
+              >
+                <Animated.View
+                  style={[
+                    styles.gradientWrap,
+                    {
+                      transform: [
+                        {
+                          translateX: borderAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-4, 4],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <LinearGradient
+                    colors={["#A5B4FC", "#818CF8", "#6366F1", "#4F46E5"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.gradientFill}
+                  >
+                    <Text style={[styles.heading, { opacity: 0 }]}>
+                      Build or Fix your{"\n"}Resume with AI
+                    </Text>
+                  </LinearGradient>
+                </Animated.View>
+              </MaskedView>
+            </View>
+
+            <Text style={styles.subheading}>
+              Create a new resume from scratch or improve your existing one in minutes.
+            </Text>
 
             <View style={styles.featureRow}>
+              <View style={styles.featureChip}>
+                <Text style={styles.featureText}>Build from Scratch</Text>
+              </View>
+
+              <View style={styles.featureChip}>
+                <Text style={styles.featureText}>Fix Existing Resume</Text>
+              </View>
+
               <View style={styles.featureChip}>
                 <Text style={styles.featureText}>ATS Optimized</Text>
               </View>
 
               <View style={styles.featureChip}>
                 <Text style={styles.featureText}>AI Powered</Text>
-              </View>
-
-              <View style={styles.featureChip}>
-                <Text style={styles.featureText}>Better Formatting</Text>
               </View>
             </View>
           </View>
@@ -201,8 +227,16 @@ export default function LoginScreen({ navigation }) {
             <LinearGradient
               colors={
                 mode === "dark"
-                  ? ["rgba(99,102,241,0.45)", "rgba(168,85,247,0.15)", "rgba(255,255,255,0.04)"]
-                  : ["rgba(99,102,241,0.22)", "rgba(168,85,247,0.10)", "rgba(255,255,255,0.85)"]
+                  ? [
+                      "rgba(99,102,241,0.45)",
+                      "rgba(168,85,247,0.15)",
+                      "rgba(255,255,255,0.04)",
+                    ]
+                  : [
+                      "rgba(99,102,241,0.22)",
+                      "rgba(168,85,247,0.10)",
+                      "rgba(255,255,255,0.85)",
+                    ]
               }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -210,10 +244,18 @@ export default function LoginScreen({ navigation }) {
             >
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Login To Continue</Text>
+                <Text style={styles.cardSubtitle}>
+                  Access your AI workspace to build, fix, and manage resumes.
+                </Text>
 
                 <AppInput
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errors.email) {
+                      setErrors((prev) => ({ ...prev, email: "" }));
+                    }
+                  }}
                   placeholder="Enter your email"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -223,7 +265,12 @@ export default function LoginScreen({ navigation }) {
                 <View style={styles.passwordWrap}>
                   <AppInput
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      if (errors.password) {
+                        setErrors((prev) => ({ ...prev, password: "" }));
+                      }
+                    }}
                     placeholder="Enter your password"
                     secureTextEntry={!showPassword}
                     error={errors.password}
@@ -252,7 +299,6 @@ export default function LoginScreen({ navigation }) {
 
                 <View style={styles.signupRow}>
                   <Text style={styles.signupText}>New here?</Text>
-
                   <Pressable onPress={() => navigation.navigate("Signup")}>
                     <Text style={styles.signupLink}> Create account</Text>
                   </Pressable>
@@ -276,44 +322,26 @@ const makeStyles = (colors, mode) =>
     container: {
       flexGrow: 1,
       paddingHorizontal: 22,
-      paddingTop: 40,
+      paddingTop: 22,
       paddingBottom: 30,
-    },
-
-    settingsBtn: {
-      position: "absolute",
-      right: 20,
-      zIndex: 20,
-      width: 44,
-      height: 44,
-      borderRadius: 16,
-      backgroundColor: colors.card,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-      borderColor: colors.border,
-
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.12,
-      shadowRadius: 20,
-      elevation: 6,
     },
 
     hero: {
       marginBottom: 28,
       position: "relative",
+      overflow: "visible",
+      paddingRight: 26,
     },
 
     heroGlow: {
       position: "absolute",
-      top: -120,
-      left: -120,
-      width: 360,
-      height: 360,
-      borderRadius: 360,
+      top: -125,
+      left: -125,
+      width: 420,
+      height: 420,
+      borderRadius: 420,
       backgroundColor: "#6366F1",
-      opacity: 0.07,
+      opacity: 0.08,
     },
 
     aiChip: {
@@ -337,16 +365,41 @@ const makeStyles = (colors, mode) =>
       marginBottom: 10,
     },
 
+    headingWrap: {
+      width: "100%",
+      paddingRight: 18,
+      overflow: "visible",
+    },
+
+    gradientWrap: {
+      alignSelf: "flex-start",
+    },
+
+    gradientFill: {
+      alignSelf: "flex-start",
+    },
+
     heading: {
-      fontSize: 40,
+      fontSize: 34,
       fontWeight: "800",
-      lineHeight: 44,
+      lineHeight: 40,
       letterSpacing: -1,
+      maxWidth: "95%",
+      includeFontPadding: false,
+    },
+
+    subheading: {
+      color: colors.mutedText,
+      fontSize: 14,
+      lineHeight: 22,
+      marginTop: 16,
+      marginBottom: 14,
+      maxWidth: "92%",
     },
 
     featureRow: {
       flexDirection: "row",
-      marginTop: 8,
+      marginTop: 2,
       flexWrap: "wrap",
     },
 
@@ -383,7 +436,6 @@ const makeStyles = (colors, mode) =>
       padding: 22,
       borderWidth: 1,
       borderColor: mode === "dark" ? "rgba(255,255,255,0.04)" : colors.border,
-
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 20 },
       shadowOpacity: mode === "dark" ? 0.18 : 0.08,
@@ -395,6 +447,13 @@ const makeStyles = (colors, mode) =>
       color: colors.text,
       fontSize: 22,
       fontWeight: "800",
+      marginBottom: 6,
+    },
+
+    cardSubtitle: {
+      color: colors.mutedText,
+      fontSize: 13,
+      lineHeight: 20,
       marginBottom: 14,
     },
 

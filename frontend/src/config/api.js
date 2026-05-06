@@ -1,8 +1,6 @@
 // src/config/api.js
 
-// export const API_BASE_URL = "http://10.0.15.231:4000";
-
-export const API_BASE_URL = "http://localhost:4000";
+export const API_BASE_URL = "http://172.16.14.138:4000";
 
 export async function registerApi({ name, email, password }) {
   const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
@@ -19,7 +17,7 @@ export async function registerApi({ name, email, password }) {
     throw new Error(data.message || "Signup failed");
   }
 
-  return data; // { token, user }
+  return data;
 }
 
 export async function verifyEmailApi({ email, otp }) {
@@ -55,7 +53,7 @@ export async function loginApi({ email, password }) {
     throw new Error(data.message || "Login failed");
   }
 
-  return data; // { token, user }
+  return data;
 }
 
 export async function forgotPasswordApi(email) {
@@ -77,15 +75,22 @@ export async function forgotPasswordApi(email) {
 }
 
 export async function verifyForgotOtpApi({ email, otp }) {
-  const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password/verify-otp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, otp }),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/auth/forgot-password/verify-otp`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, otp }),
+    }
+  );
 
   const data = await response.json();
-  if (!response.ok) throw new Error(data.message || "OTP verification failed");
-  return data; // { message, resetToken }
+
+  if (!response.ok) {
+    throw new Error(data.message || "OTP verification failed");
+  }
+
+  return data;
 }
 
 export async function resetPasswordApi({ resetToken, newPassword }) {
@@ -96,8 +101,12 @@ export async function resetPasswordApi({ resetToken, newPassword }) {
   });
 
   const data = await response.json();
-  if (!response.ok) throw new Error(data.message || "Password reset failed");
-  return data; // { message }
+
+  if (!response.ok) {
+    throw new Error(data.message || "Password reset failed");
+  }
+
+  return data;
 }
 
 export async function analyzeResumeApi(file) {
@@ -111,7 +120,7 @@ export async function analyzeResumeApi(file) {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
 
-  const response = await fetch("http://10.0.15.233:4000/api/resume/analyze", {
+  const response = await fetch(`${API_BASE_URL}/api/resume/analyze`, {
     method: "POST",
     body: formData,
     headers: {
@@ -129,7 +138,7 @@ export async function analyzeResumeApi(file) {
 }
 
 export async function generateFixedResumeApi(file, analysis) {
-  const response = await fetch("http://10.0.15.233:4000/api/resume/fix", {
+  const response = await fetch(`${API_BASE_URL}/api/resume/fix`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -148,4 +157,52 @@ export async function generateFixedResumeApi(file, analysis) {
   }
 
   return data;
+}
+
+export async function generateResumeFromScratchApi({
+  fullName,
+  targetRole,
+  email,
+  phone,
+  city,
+  skills,
+  education,
+  objective,
+  projects,
+}) {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/resume/generate-from-scratch`,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: String(fullName || "").trim(),
+          targetRole: String(targetRole || "").trim(),
+          email: String(email || "").trim(),
+          phone: String(phone || "").trim(),
+          city: String(city || "").trim(),
+          skills: String(skills || "").trim(),
+          education: String(education || "").trim(),
+          objective: String(objective || "").trim(),
+          projects: String(projects || "").trim(),
+        }),
+      }
+    );
+
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : {};
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to generate resume");
+    }
+
+    return data;
+  } catch (error) {
+    console.log("GENERATE RESUME ERROR:", error);
+    throw new Error(error.message || "Network request failed");
+  }
 }

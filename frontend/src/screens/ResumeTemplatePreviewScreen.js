@@ -24,7 +24,7 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
 
   const fixedResume = route?.params?.fixedResume || null;
   const generatedResume = route?.params?.generatedResume || null;
-  const resumeData = generatedResume || fixedResume || null;
+  const sourceResume = generatedResume || fixedResume || null;
   const selectedTemplate = route?.params?.selectedTemplate || "modern";
   const glowAnim = useRef(new Animated.Value(0)).current;
 
@@ -59,9 +59,8 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
   const templateLabel =
     selectedTemplate.charAt(0).toUpperCase() + selectedTemplate.slice(1);
 
-  const contactLine = [resumeData?.email, resumeData?.phone, resumeData?.location]
-    .filter(Boolean)
-    .join(" • ");
+  const normalizedData = getNormalizedResumeData();
+  const contactLine = normalizedData.contactLine;
 
   function getResumeHtmlByTemplate() {
     switch (selectedTemplate) {
@@ -106,28 +105,33 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
   }
 
   function getNormalizedResumeData() {
-    const skillsArray = Array.isArray(resumeData?.skills)
-      ? fixedResume.skills
-      : typeof fixedResume?.skills === "string"
-        ? fixedResume.skills.split(",").map((item) => item.trim()).filter(Boolean)
+    const skillsArray = Array.isArray(sourceResume?.skills)
+      ? sourceResume.skills
+      : typeof sourceResume?.skills === "string"
+        ? sourceResume.skills.split(",").map((item) => item.trim()).filter(Boolean)
         : [];
 
-    const experienceArray = toArray(resumeData?.experience);
-    const projectsArray = toArray(resumeData?.projects);
-    const educationArray = toArray(resumeData?.education);
+    const experienceArray = toArray(sourceResume?.experience);
+    const projectsArray = toArray(sourceResume?.projects);
+    const educationArray = toArray(sourceResume?.education);
 
     return {
-      name: safeString(resumeData?.fullName || "Your Name"),
-      role: safeString(resumeData?.targetRole || "Professional Title"),
-      email: safeString(resumeData?.email || ""),
-      phone: safeString(resumeData?.phone || ""),
-      location: safeString(resumeData?.city || ""),
-      summary: safeString(resumeData?.objective || ""),
-      contactLine: safeString(
-        [fixedResume?.email, fixedResume?.phone, fixedResume?.location]
-          .filter(Boolean)
-          .join(" • ")
-      ),
+      name: sourceResume?.fullName || "Your Name",
+      role:
+        sourceResume?.targetRole ||
+        sourceResume?.jobTitle ||
+        "Professional Title",
+      email: sourceResume?.email || "",
+      phone: sourceResume?.phone || "",
+      location: sourceResume?.city || sourceResume?.location || "",
+      summary: sourceResume?.objective || sourceResume?.summary || "",
+      contactLine: [
+        sourceResume?.email,
+        sourceResume?.phone,
+        sourceResume?.city || sourceResume?.location,
+      ]
+        .filter(Boolean)
+        .join(" • "),
       skillsArray,
       experienceArray,
       projectsArray,
@@ -143,18 +147,18 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
       <div class="section">
         <div class="section-title" style="color:${accentColor}; border-color:${accentColor};">Experience</div>
         ${experienceArray
-        .map((item) => {
-          if (typeof item === "string") {
-            return `<p class="body">${safeString(item)}</p>`;
-          }
+          .map((item) => {
+            if (typeof item === "string") {
+              return `<p class="body">${safeString(item)}</p>`;
+            }
 
-          const bullets = Array.isArray(item?.bullets)
-            ? item.bullets
-            : item?.bullets
-              ? [item.bullets]
-              : [];
+            const bullets = Array.isArray(item?.bullets)
+              ? item.bullets
+              : item?.bullets
+                ? [item.bullets]
+                : [];
 
-          return `
+            return `
               <div class="entry">
                 <div class="entry-row">
                   <div class="entry-title">${safeString(item?.role || "Role")}</div>
@@ -162,15 +166,15 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
                 </div>
                 ${item?.company ? `<div class="entry-subtitle">${safeString(item.company)}</div>` : ""}
                 ${bullets.length
-              ? `<ul class="bullet-list">
+                  ? `<ul class="bullet-list">
                         ${bullets.map((bullet) => `<li>${safeString(bullet)}</li>`).join("")}
                       </ul>`
-              : ""
-            }
+                  : ""
+                }
               </div>
             `;
-        })
-        .join("")}
+          })
+          .join("")}
       </div>
     `;
   }
@@ -183,30 +187,48 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
       <div class="section">
         <div class="section-title" style="color:${accentColor}; border-color:${accentColor};">Projects</div>
         ${projectsArray
-        .map((item) => {
-          if (typeof item === "string") {
-            return `<p class="body">${safeString(item)}</p>`;
-          }
-
-          const details = Array.isArray(item?.details)
-            ? item.details
-            : item?.details
-              ? [item.details]
-              : [];
-
-          return `
-              <div class="entry">
-                <div class="entry-title">${safeString(item?.name || "Project")}</div>
-                ${details.length
-              ? `<ul class="bullet-list">
-                        ${details.map((detail) => `<li>${safeString(detail)}</li>`).join("")}
-                      </ul>`
-              : ""
+          .map((item) => {
+            if (typeof item === "string") {
+              return `<p class="body">${safeString(item)}</p>`;
             }
+
+            const projectTitle =
+              item?.name ||
+              item?.title ||
+              item?.projectName ||
+              "";
+
+            const details = Array.isArray(item?.details)
+              ? item.details
+              : Array.isArray(item?.bullets)
+                ? item.bullets
+                : item?.description
+                  ? [item.description]
+                  : item?.text
+                    ? [item.text]
+                    : [];
+
+            if (!projectTitle && details.length) {
+              return `
+                <div class="entry">
+                  ${details.map((detail) => `<p class="body">${safeString(detail)}</p>`).join("")}
+                </div>
+              `;
+            }
+
+            return `
+              <div class="entry">
+                ${projectTitle ? `<div class="entry-title">${safeString(projectTitle)}</div>` : ""}
+                ${details.length
+                  ? `<ul class="bullet-list">
+                      ${details.map((detail) => `<li>${safeString(detail)}</li>`).join("")}
+                    </ul>`
+                  : ""
+                }
               </div>
             `;
-        })
-        .join("")}
+          })
+          .join("")}
       </div>
     `;
   }
@@ -219,12 +241,12 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
       <div class="section">
         <div class="section-title" style="color:${accentColor}; border-color:${accentColor};">Education</div>
         ${educationArray
-        .map((item) => {
-          if (typeof item === "string") {
-            return `<p class="body">${safeString(item)}</p>`;
-          }
+          .map((item) => {
+            if (typeof item === "string") {
+              return `<p class="body">${safeString(item)}</p>`;
+            }
 
-          return `
+            return `
               <div class="entry">
                 <div class="entry-row">
                   <div class="entry-title">${safeString(item?.degree || "Degree")}</div>
@@ -233,8 +255,8 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
                 ${item?.school ? `<div class="entry-subtitle">${safeString(item.school)}</div>` : ""}
               </div>
             `;
-        })
-        .join("")}
+          })
+          .join("")}
       </div>
     `;
   }
@@ -363,14 +385,14 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
           <div class="page">
             <div class="top">
               <div style="flex:1;">
-                <h1 class="name">${d.name}</h1>
-                <div class="role">${d.role}</div>
-                <div class="contact">${d.contactLine}</div>
+                <h1 class="name">${safeString(d.name)}</h1>
+                <div class="role">${safeString(d.role)}</div>
+                <div class="contact">${safeString(d.contactLine)}</div>
               </div>
               <div class="accent-bar"></div>
             </div>
 
-            ${d.summary ? `<div class="section"><div class="section-title" style="color:#4F46E5;border-color:#4F46E5;">Professional Summary</div><p class="body">${d.summary}</p></div>` : ""}
+            ${d.summary ? `<div class="section"><div class="section-title" style="color:#4F46E5;border-color:#4F46E5;">Professional Summary</div><p class="body">${safeString(d.summary)}</p></div>` : ""}
             ${renderExperienceHtml("#4F46E5")}
             ${renderProjectsHtml("#4F46E5")}
             ${renderEducationHtml("#4F46E5")}
@@ -392,12 +414,12 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
         <body>
           <div class="page">
             <div class="header-center">
-              <h1 class="name">${d.name}</h1>
-              <div class="role" style="color:#374151;">${d.role}</div>
-              <div class="contact">${d.contactLine}</div>
+              <h1 class="name">${safeString(d.name)}</h1>
+              <div class="role" style="color:#374151;">${safeString(d.role)}</div>
+              <div class="contact">${safeString(d.contactLine)}</div>
             </div>
 
-            ${d.summary ? `<div class="section"><div class="section-title">Professional Summary</div><p class="body">${d.summary}</p></div>` : ""}
+            ${d.summary ? `<div class="section"><div class="section-title">Professional Summary</div><p class="body">${safeString(d.summary)}</p></div>` : ""}
             ${renderExperienceHtml("#111827")}
             ${renderProjectsHtml("#111827")}
             ${renderEducationHtml("#111827")}
@@ -418,11 +440,11 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
         `)}</head>
         <body>
           <div class="page">
-            <h1 class="name">${d.name}</h1>
-            <div class="role">${d.role}</div>
-            <div class="contact">${d.contactLine}</div>
+            <h1 class="name">${safeString(d.name)}</h1>
+            <div class="role">${safeString(d.role)}</div>
+            <div class="contact">${safeString(d.contactLine)}</div>
 
-            ${d.summary ? `<div class="section"><div class="section-title">Summary</div><p class="body">${d.summary}</p></div>` : ""}
+            ${d.summary ? `<div class="section"><div class="section-title">Summary</div><p class="body">${safeString(d.summary)}</p></div>` : ""}
             ${renderExperienceHtml("#111827")}
             ${renderProjectsHtml("#111827")}
             ${renderEducationHtml("#111827")}
@@ -446,12 +468,12 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
         <body>
           <div class="page">
             <div class="header-center">
-              <h1 class="name">${d.name}</h1>
-              <div class="role">${d.role}</div>
-              <div class="contact">${d.contactLine}</div>
+              <h1 class="name">${safeString(d.name)}</h1>
+              <div class="role">${safeString(d.role)}</div>
+              <div class="contact">${safeString(d.contactLine)}</div>
             </div>
 
-            ${d.summary ? `<div class="section"><div class="section-title">Executive Summary</div><p class="body">${d.summary}</p></div>` : ""}
+            ${d.summary ? `<div class="section"><div class="section-title">Executive Summary</div><p class="body">${safeString(d.summary)}</p></div>` : ""}
             ${renderExperienceHtml("#111827")}
             ${renderProjectsHtml("#111827")}
             ${renderEducationHtml("#111827")}
@@ -480,11 +502,11 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
         `)}</head>
         <body>
           <div class="page">
-            <h1 class="name">${d.name}</h1>
-            <div class="role">${d.role}</div>
-            <div class="contact">${d.contactLine}</div>
+            <h1 class="name">${safeString(d.name)}</h1>
+            <div class="role">${safeString(d.role)}</div>
+            <div class="contact">${safeString(d.contactLine)}</div>
 
-            ${d.summary ? `<div class="section"><div class="section-title">Summary</div><p class="body">${d.summary}</p></div>` : ""}
+            ${d.summary ? `<div class="section"><div class="section-title">Summary</div><p class="body">${safeString(d.summary)}</p></div>` : ""}
             ${renderExperienceHtml("#111827")}
             ${renderProjectsHtml("#111827")}
             ${renderEducationHtml("#111827")}
@@ -550,27 +572,27 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
         <body>
           <div class="layout">
             <div class="left">
-              <h1 class="name">${d.name}</h1>
-              <div class="role">${d.role}</div>
+              <h1 class="name">${safeString(d.name)}</h1>
+              <div class="role">${safeString(d.role)}</div>
 
               <div class="left-title">Contact</div>
-              <div class="left-text">${d.email || "-"}</div>
-              <div class="left-text">${d.phone || "-"}</div>
-              <div class="left-text">${d.location || "-"}</div>
+              <div class="left-text">${safeString(d.email) || "-"}</div>
+              <div class="left-text">${safeString(d.phone) || "-"}</div>
+              <div class="left-text">${safeString(d.location) || "-"}</div>
 
               ${d.skillsArray.length
-        ? `
+                ? `
                     <div class="left-title">Skills</div>
                     ${d.skillsArray
-          .map((skill) => `<div class="left-text">• ${safeString(skill)}</div>`)
-          .join("")}
+                      .map((skill) => `<div class="left-text">• ${safeString(skill)}</div>`)
+                      .join("")}
                   `
-        : ""
-      }
+                : ""
+              }
             </div>
 
             <div class="right">
-              ${d.summary ? `<div class="section"><div class="section-title" style="color:#111827;border-color:#E5E7EB;">Profile</div><p class="body">${d.summary}</p></div>` : ""}
+              ${d.summary ? `<div class="section"><div class="section-title" style="color:#111827;border-color:#E5E7EB;">Profile</div><p class="body">${safeString(d.summary)}</p></div>` : ""}
               ${renderExperienceHtml("#111827")}
               ${renderProjectsHtml("#111827")}
               ${renderEducationHtml("#111827")}
@@ -596,12 +618,12 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
         <body>
           <div class="page">
             <div style="text-align:center;">
-              <h1 class="name">${d.name}</h1>
-              <div class="role">${d.role}</div>
-              <div class="contact">${d.contactLine}</div>
+              <h1 class="name">${safeString(d.name)}</h1>
+              <div class="role">${safeString(d.role)}</div>
+              <div class="contact">${safeString(d.contactLine)}</div>
             </div>
 
-            ${d.summary ? `<div class="section"><div class="section-title">Summary</div><p class="body">${d.summary}</p></div>` : ""}
+            ${d.summary ? `<div class="section"><div class="section-title">Summary</div><p class="body">${safeString(d.summary)}</p></div>` : ""}
             ${renderExperienceHtml("#8B5E3C")}
             ${renderProjectsHtml("#8B5E3C")}
             ${renderEducationHtml("#8B5E3C")}
@@ -636,12 +658,12 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
         <body>
           <div class="page">
             <div class="creative-top">
-              <h1 class="name">${d.name}</h1>
-              <div class="role">${d.role}</div>
+              <h1 class="name">${safeString(d.name)}</h1>
+              <div class="role">${safeString(d.role)}</div>
             </div>
-            <div class="contact">${d.contactLine}</div>
+            <div class="contact">${safeString(d.contactLine)}</div>
 
-            ${d.summary ? `<div class="section"><div class="section-title">About Me</div><p class="body">${d.summary}</p></div>` : ""}
+            ${d.summary ? `<div class="section"><div class="section-title">About Me</div><p class="body">${safeString(d.summary)}</p></div>` : ""}
             ${renderExperienceHtml("#4F46E5")}
             ${renderProjectsHtml("#4F46E5")}
             ${renderEducationHtml("#4F46E5")}
@@ -676,13 +698,13 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
             <div class="photo-header">
               <div class="photo-circle"></div>
               <div>
-                <h1 class="name">${d.name}</h1>
-                <div class="role" style="color:#374151;">${d.role}</div>
-                <div class="contact">${d.contactLine}</div>
+                <h1 class="name">${safeString(d.name)}</h1>
+                <div class="role" style="color:#374151;">${safeString(d.role)}</div>
+                <div class="contact">${safeString(d.contactLine)}</div>
               </div>
             </div>
 
-            ${d.summary ? `<div class="section"><div class="section-title">Profile</div><p class="body">${d.summary}</p></div>` : ""}
+            ${d.summary ? `<div class="section"><div class="section-title">Profile</div><p class="body">${safeString(d.summary)}</p></div>` : ""}
             ${renderExperienceHtml("#111827")}
             ${renderProjectsHtml("#111827")}
             ${renderEducationHtml("#111827")}
@@ -714,29 +736,29 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
         `)}</head>
         <body>
           <div class="page">
-            <h1 class="name">${d.name}</h1>
-            <div class="role">${d.role}</div>
-            <div class="contact">${d.contactLine}</div>
+            <h1 class="name">${safeString(d.name)}</h1>
+            <div class="role">${safeString(d.role)}</div>
+            <div class="contact">${safeString(d.contactLine)}</div>
 
-            ${d.summary ? `<div class="section"><div class="section-title">Summary</div><p class="body">${d.summary}</p></div>` : ""}
+            ${d.summary ? `<div class="section"><div class="section-title">Summary</div><p class="body">${safeString(d.summary)}</p></div>` : ""}
 
             ${exp.length
-        ? `
+              ? `
                   <div class="section">
                     <div class="section-title">Experience</div>
                     ${exp
-          .map((item) => {
-            if (typeof item === "string") {
-              return `<p class="body">${safeString(item)}</p>`;
-            }
+                      .map((item) => {
+                        if (typeof item === "string") {
+                          return `<p class="body">${safeString(item)}</p>`;
+                        }
 
-            const bullets = Array.isArray(item?.bullets)
-              ? item.bullets.slice(0, 2)
-              : item?.bullets
-                ? [item.bullets]
-                : [];
+                        const bullets = Array.isArray(item?.bullets)
+                          ? item.bullets.slice(0, 2)
+                          : item?.bullets
+                            ? [item.bullets]
+                            : [];
 
-            return `
+                        return `
                           <div class="entry">
                             <div class="entry-title">
                               ${safeString(item?.role || "Role")}
@@ -744,45 +766,45 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
                             </div>
                             ${item?.duration ? `<div class="entry-meta">${safeString(item.duration)}</div>` : ""}
                             ${bullets.length
-                ? `<ul class="bullet-list">
+                              ? `<ul class="bullet-list">
                                     ${bullets.map((bullet) => `<li>${safeString(bullet)}</li>`).join("")}
                                   </ul>`
-                : ""
-              }
+                              : ""
+                            }
                           </div>
                         `;
-          })
-          .join("")}
+                      })
+                      .join("")}
                   </div>
                 `
-        : ""
-      }
+              : ""
+            }
 
             ${renderSkillsHtml("#111827")}
 
             ${edu.length
-        ? `
+              ? `
                   <div class="section">
                     <div class="section-title">Education</div>
                     ${edu
-          .map((item) => {
-            if (typeof item === "string") {
-              return `<p class="body">${safeString(item)}</p>`;
-            }
-            return `
+                      .map((item) => {
+                        if (typeof item === "string") {
+                          return `<p class="body">${safeString(item)}</p>`;
+                        }
+                        return `
                           <p class="body">
                             ${[item?.degree, item?.school, item?.year]
-                .filter(Boolean)
-                .map((part) => safeString(part))
-                .join(" • ")}
+                              .filter(Boolean)
+                              .map((part) => safeString(part))
+                              .join(" • ")}
                           </p>
                         `;
-          })
-          .join("")}
+                      })
+                      .join("")}
                   </div>
                 `
-        : ""
-      }
+              : ""
+            }
           </div>
         </body>
       </html>
@@ -791,12 +813,12 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
 
   async function handleDownloadResume() {
     try {
-      if (!fixedResume) {
+      if (!sourceResume) {
         Alert.alert("Error", "No resume data available");
         return;
       }
 
-      const safeFileName = `${fixedResume?.fullName || "Resume"}_${selectedTemplate}`
+      const safeFileName = `${sourceResume?.fullName || "Resume"}_${selectedTemplate}`
         .replace(/[^a-zA-Z0-9_-]/g, "_");
 
       const htmlContent = getResumeHtmlByTemplate();
@@ -835,10 +857,10 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
   }
 
   function renderSummary(textStyle, titleStyle, title = "Professional Summary") {
-    if (!fixedResume?.summary) return null;
+    if (!normalizedData.summary) return null;
     return (
       <Section title={title} titleStyle={titleStyle}>
-        <Text style={textStyle}>{fixedResume.summary}</Text>
+        <Text style={textStyle}>{normalizedData.summary}</Text>
       </Section>
     );
   }
@@ -850,85 +872,155 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
     bulletStyle,
     titleStyle
   ) {
-    if (!fixedResume?.experience?.length) return null;
+    const items = normalizedData.experienceArray;
+    if (!items?.length) return null;
 
     return (
       <Section title="Experience" titleStyle={titleStyle}>
-        {fixedResume.experience.map((item, index) => (
-          <View key={index} style={styles.entryBlock}>
-            <View style={styles.entryTopRow}>
-              <Text style={entryTitleStyle}>{item?.role || "Role"}</Text>
-              {!!item?.duration && <Text style={metaStyle}>{item.duration}</Text>}
+        {items.map((item, index) => {
+          if (typeof item === "string") {
+            return (
+              <View key={index} style={styles.entryBlock}>
+                <Text style={bulletStyle}>{item}</Text>
+              </View>
+            );
+          }
+
+          const bullets = Array.isArray(item?.bullets)
+            ? item.bullets
+            : item?.bullets
+              ? [item.bullets]
+              : [];
+
+          return (
+            <View key={index} style={styles.entryBlock}>
+              <View style={styles.entryTopRow}>
+                <Text style={entryTitleStyle}>{item?.role || "Role"}</Text>
+                {!!item?.duration && <Text style={metaStyle}>{item.duration}</Text>}
+              </View>
+
+              {!!item?.company && <Text style={subtitleStyle}>{item.company}</Text>}
+
+              {bullets.map((bullet, i) => (
+                <Text key={i} style={bulletStyle}>
+                  • {bullet}
+                </Text>
+              ))}
             </View>
-
-            {!!item?.company && <Text style={subtitleStyle}>{item.company}</Text>}
-
-            {item?.bullets?.map((bullet, i) => (
-              <Text key={i} style={bulletStyle}>
-                • {bullet}
-              </Text>
-            ))}
-          </View>
-        ))}
+          );
+        })}
       </Section>
     );
   }
 
   function renderProjects(entryTitleStyle, bulletStyle, titleStyle) {
-    if (!fixedResume?.projects?.length) return null;
+    const items = normalizedData.projectsArray;
+    if (!items?.length) return null;
 
     return (
       <Section title="Projects" titleStyle={titleStyle}>
-        {fixedResume.projects.map((item, index) => (
-          <View key={index} style={styles.entryBlock}>
-            <Text style={entryTitleStyle}>{item?.name || "Project"}</Text>
-            {item?.details?.map((detail, i) => (
-              <Text key={i} style={bulletStyle}>
-                • {detail}
-              </Text>
-            ))}
-          </View>
-        ))}
+        {items.map((item, index) => {
+          if (typeof item === "string") {
+            return (
+              <View key={index} style={styles.entryBlock}>
+                <Text style={bulletStyle}>{item}</Text>
+              </View>
+            );
+          }
+
+          const projectTitle =
+            item?.name ||
+            item?.title ||
+            item?.projectName ||
+            "";
+
+          const details = Array.isArray(item?.details)
+            ? item.details
+            : Array.isArray(item?.bullets)
+              ? item.bullets
+              : item?.description
+                ? [item.description]
+                : item?.text
+                  ? [item.text]
+                  : [];
+
+          if (!projectTitle && details.length) {
+            return (
+              <View key={index} style={styles.entryBlock}>
+                {details.map((detail, i) => (
+                  <Text key={i} style={bulletStyle}>
+                    {detail}
+                  </Text>
+                ))}
+              </View>
+            );
+          }
+
+          return (
+            <View key={index} style={styles.entryBlock}>
+              {!!projectTitle && (
+                <Text style={entryTitleStyle}>{projectTitle}</Text>
+              )}
+
+              {details.map((detail, i) => (
+                <Text key={i} style={bulletStyle}>
+                  • {detail}
+                </Text>
+              ))}
+            </View>
+          );
+        })}
       </Section>
     );
   }
 
   function renderEducation(entryTitleStyle, subtitleStyle, metaStyle, titleStyle) {
-    if (!fixedResume?.education?.length) return null;
+    const items = normalizedData.educationArray;
+    if (!items?.length) return null;
 
     return (
       <Section title="Education" titleStyle={titleStyle}>
-        {fixedResume.education.map((item, index) => (
-          <View key={index} style={styles.entryBlock}>
-            <View style={styles.entryTopRow}>
-              <Text style={entryTitleStyle}>{item?.degree || "Degree"}</Text>
-              {!!item?.year && <Text style={metaStyle}>{item.year}</Text>}
-            </View>
+        {items.map((item, index) => {
+          if (typeof item === "string") {
+            return (
+              <View key={index} style={styles.entryBlock}>
+                <Text style={subtitleStyle}>{item}</Text>
+              </View>
+            );
+          }
 
-            {!!item?.school && <Text style={subtitleStyle}>{item.school}</Text>}
-          </View>
-        ))}
+          return (
+            <View key={index} style={styles.entryBlock}>
+              <View style={styles.entryTopRow}>
+                <Text style={entryTitleStyle}>{item?.degree || "Degree"}</Text>
+                {!!item?.year && <Text style={metaStyle}>{item.year}</Text>}
+              </View>
+
+              {!!item?.school && <Text style={subtitleStyle}>{item.school}</Text>}
+            </View>
+          );
+        })}
       </Section>
     );
   }
 
   function renderSkillsText(textStyle, titleStyle, title = "Skills") {
-    if (!fixedResume?.skills?.length) return null;
+    if (!normalizedData.skillsArray?.length) return null;
 
     return (
       <Section title={title} titleStyle={titleStyle}>
-        <Text style={textStyle}>{fixedResume.skills.join(" • ")}</Text>
+        <Text style={textStyle}>{normalizedData.skillsArray.join(" • ")}</Text>
       </Section>
     );
   }
 
   function renderSkillsChips(titleStyle) {
-    if (!fixedResume?.skills?.length) return null;
+    if (!normalizedData.skillsArray?.length) return null;
 
     return (
       <Section title="Skills" titleStyle={titleStyle}>
         <View style={styles.skillsWrap}>
-          {fixedResume.skills.map((skill, index) => (
+          {normalizedData.skillsArray.map((skill, index) => (
             <View key={index} style={styles.modernSkillChip}>
               <Text style={styles.modernSkillChipText}>{skill}</Text>
             </View>
@@ -1011,11 +1103,11 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
                   <View style={styles.modernHeader}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.modernName}>
-                        {resumeData?.fullName || "Your Name"}
+                        {normalizedData.name}
                       </Text>
 
                       <Text style={styles.modernRole}>
-                        {resumeData?.targetRole || "Professional Title"}
+                        {normalizedData.role}
                       </Text>
                       <Text style={styles.modernContact}>{contactLine}</Text>
                     </View>
@@ -1048,10 +1140,10 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
               {isProfessional && (
                 <View style={styles.professionalCard}>
                   <Text style={styles.professionalName}>
-                    {fixedResume?.fullName || "Your Name"}
+                    {normalizedData.name}
                   </Text>
                   <Text style={styles.professionalRole}>
-                    {fixedResume?.jobTitle || "Professional Title"}
+                    {normalizedData.role}
                   </Text>
                   <Text style={styles.professionalContact}>{contactLine}</Text>
 
@@ -1084,10 +1176,10 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
               {isMinimal && (
                 <View style={styles.minimalCard}>
                   <Text style={styles.minimalName}>
-                    {fixedResume?.fullName || "Your Name"}
+                    {normalizedData.name}
                   </Text>
                   <Text style={styles.minimalRole}>
-                    {fixedResume?.jobTitle || "Professional Title"}
+                    {normalizedData.role}
                   </Text>
                   <Text style={styles.minimalContact}>{contactLine}</Text>
 
@@ -1117,10 +1209,10 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
               {isExecutive && (
                 <View style={styles.executiveCard}>
                   <Text style={styles.executiveName}>
-                    {fixedResume?.fullName || "Your Name"}
+                    {normalizedData.name}
                   </Text>
                   <Text style={styles.executiveRole}>
-                    {fixedResume?.jobTitle || "Professional Title"}
+                    {normalizedData.role}
                   </Text>
                   <Text style={styles.executiveContact}>{contactLine}</Text>
 
@@ -1158,10 +1250,10 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
               {isCompact && (
                 <View style={styles.compactCard}>
                   <Text style={styles.compactName}>
-                    {fixedResume?.fullName || "Your Name"}
+                    {normalizedData.name}
                   </Text>
                   <Text style={styles.compactRole}>
-                    {fixedResume?.jobTitle || "Professional Title"}
+                    {normalizedData.role}
                   </Text>
                   <Text style={styles.compactContact}>{contactLine}</Text>
 
@@ -1192,23 +1284,23 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
                 <View style={styles.sidebarCard}>
                   <View style={styles.sidebarLeft}>
                     <Text style={styles.sidebarName}>
-                      {fixedResume?.fullName || "Your Name"}
+                      {normalizedData.name}
                     </Text>
                     <Text style={styles.sidebarRole}>
-                      {fixedResume?.jobTitle || "Professional Title"}
+                      {normalizedData.role}
                     </Text>
 
                     <Text style={styles.sidebarSideHeading}>Contact</Text>
-                    <Text style={styles.sidebarSideText}>{fixedResume?.email || "-"}</Text>
-                    <Text style={styles.sidebarSideText}>{fixedResume?.phone || "-"}</Text>
+                    <Text style={styles.sidebarSideText}>{normalizedData.email || "-"}</Text>
+                    <Text style={styles.sidebarSideText}>{normalizedData.phone || "-"}</Text>
                     <Text style={styles.sidebarSideText}>
-                      {fixedResume?.location || "-"}
+                      {normalizedData.location || "-"}
                     </Text>
 
-                    {!!fixedResume?.skills?.length && (
+                    {!!normalizedData.skillsArray?.length && (
                       <>
                         <Text style={styles.sidebarSideHeading}>Skills</Text>
-                        {fixedResume.skills.map((skill, index) => (
+                        {normalizedData.skillsArray.map((skill, index) => (
                           <Text key={index} style={styles.sidebarSideText}>
                             • {skill}
                           </Text>
@@ -1244,10 +1336,10 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
               {isElegant && (
                 <View style={styles.elegantCard}>
                   <Text style={styles.elegantName}>
-                    {fixedResume?.fullName || "Your Name"}
+                    {normalizedData.name}
                   </Text>
                   <Text style={styles.elegantRole}>
-                    {fixedResume?.jobTitle || "Professional Title"}
+                    {normalizedData.role}
                   </Text>
                   <Text style={styles.elegantContact}>{contactLine}</Text>
 
@@ -1278,10 +1370,10 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
                 <View style={styles.creativeCard}>
                   <View style={styles.creativeTop}>
                     <Text style={styles.creativeName}>
-                      {fixedResume?.fullName || "Your Name"}
+                      {normalizedData.name}
                     </Text>
                     <Text style={styles.creativeRole}>
-                      {fixedResume?.jobTitle || "Professional Title"}
+                      {normalizedData.role}
                     </Text>
                   </View>
 
@@ -1316,10 +1408,10 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
                     <View style={styles.photoCircle} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.photoName}>
-                        {fixedResume?.fullName || "Your Name"}
+                        {normalizedData.name}
                       </Text>
                       <Text style={styles.photoRole}>
-                        {fixedResume?.jobTitle || "Professional Title"}
+                        {normalizedData.role}
                       </Text>
                       <Text style={styles.photoContact}>{contactLine}</Text>
                     </View>
@@ -1351,53 +1443,79 @@ export default function ResumeTemplatePreviewScreen({ navigation, route }) {
               {isSinglePage && (
                 <View style={styles.singlePageCard}>
                   <Text style={styles.singlePageName}>
-                    {fixedResume?.fullName || "Your Name"}
+                    {normalizedData.name}
                   </Text>
                   <Text style={styles.singlePageRole}>
-                    {fixedResume?.jobTitle || "Professional Title"}
+                    {normalizedData.role}
                   </Text>
                   <Text style={styles.singlePageContact}>{contactLine}</Text>
 
                   {renderSummary(styles.singlePageText, styles.singlePageSectionTitle, "Summary")}
 
-                  {!!fixedResume?.experience?.length && (
+                  {!!normalizedData.experienceArray?.length && (
                     <Section title="Experience" titleStyle={styles.singlePageSectionTitle}>
-                      {fixedResume.experience.slice(0, 2).map((item, index) => (
-                        <View key={index} style={styles.compactEntryBlock}>
-                          <Text style={styles.singlePageEntryTitle}>
-                            {item?.role || "Role"}
-                            {item?.company ? ` • ${item.company}` : ""}
-                          </Text>
-                          {!!item?.duration && (
-                            <Text style={styles.singlePageMeta}>{item.duration}</Text>
-                          )}
-                          {(item?.bullets || []).slice(0, 2).map((bullet, i) => (
-                            <Text key={i} style={styles.singlePageBullet}>
-                              • {bullet}
+                      {normalizedData.experienceArray.slice(0, 2).map((item, index) => {
+                        if (typeof item === "string") {
+                          return (
+                            <View key={index} style={styles.compactEntryBlock}>
+                              <Text style={styles.singlePageBullet}>{item}</Text>
+                            </View>
+                          );
+                        }
+
+                        const bullets = Array.isArray(item?.bullets)
+                          ? item.bullets
+                          : item?.bullets
+                            ? [item.bullets]
+                            : [];
+
+                        return (
+                          <View key={index} style={styles.compactEntryBlock}>
+                            <Text style={styles.singlePageEntryTitle}>
+                              {item?.role || "Role"}
+                              {item?.company ? ` • ${item.company}` : ""}
                             </Text>
-                          ))}
-                        </View>
-                      ))}
+                            {!!item?.duration && (
+                              <Text style={styles.singlePageMeta}>{item.duration}</Text>
+                            )}
+                            {bullets.slice(0, 2).map((bullet, i) => (
+                              <Text key={i} style={styles.singlePageBullet}>
+                                • {bullet}
+                              </Text>
+                            ))}
+                          </View>
+                        );
+                      })}
                     </Section>
                   )}
 
-                  {!!fixedResume?.skills?.length && (
+                  {!!normalizedData.skillsArray?.length && (
                     <Section title="Skills" titleStyle={styles.singlePageSectionTitle}>
                       <Text style={styles.singlePageText}>
-                        {fixedResume.skills.join(" • ")}
+                        {normalizedData.skillsArray.join(" • ")}
                       </Text>
                     </Section>
                   )}
 
-                  {!!fixedResume?.education?.length && (
+                  {!!normalizedData.educationArray?.length && (
                     <Section title="Education" titleStyle={styles.singlePageSectionTitle}>
-                      {fixedResume.education.slice(0, 1).map((item, index) => (
-                        <Text key={index} style={styles.singlePageText}>
-                          {[item?.degree, item?.school, item?.year]
-                            .filter(Boolean)
-                            .join(" • ")}
-                        </Text>
-                      ))}
+                      {normalizedData.educationArray.slice(0, 1).map((item, index) => {
+                        if (typeof item === "string") {
+                          return (
+                            <Text key={index} style={styles.singlePageText}>
+                              {item}
+                            </Text>
+                          );
+                        }
+
+                        return (
+                          <Text key={index} style={styles.singlePageText}>
+                            {[item?.degree, item?.school, item?.year]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </Text>
+                        );
+                      })}
                     </Section>
                   )}
                 </View>

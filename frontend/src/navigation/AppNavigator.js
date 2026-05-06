@@ -21,6 +21,7 @@ import OnboardingScreen2 from "../screens/OnboardingScreen2";
 import OnboardingScreen3 from "../screens/OnboardingScreen3";
 import CreateResumeScreen from "../screens/CreateResumeScreen";
 import GeneratedResumePreviewScreen from "../screens/GeneratedResumePreviewScreen";
+import HistoryScreen from "../screens/HistoryScreen";
 
 
 const Stack = createNativeStackNavigator();
@@ -61,6 +62,7 @@ export default function AppNavigator() {
         name="ResumeTemplatePreview"
         component={ResumeTemplatePreviewScreen}
       />
+      <Stack.Screen name="History" component={HistoryScreen} />
     </Stack.Navigator>
   );
 }

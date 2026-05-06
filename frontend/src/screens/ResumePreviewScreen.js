@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Animated, BackHandler } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Alert,
+  Animated,
+  BackHandler,
+} from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeContext";
 import spacing from "../theme/spacing";
 import ScreenHeader from "../components/ScreenHeader";
@@ -11,15 +20,18 @@ import MaskedView from "@react-native-masked-view/masked-view";
 
 export default function ResumePreviewScreen({ navigation, route }) {
   const { colors, mode } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, mode), [colors, mode]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(colors, mode, insets), [colors, mode, insets]);
 
   const file = route?.params?.file || null;
   const analysis = route?.params?.analysis || null;
 
   const [loading, setLoading] = useState(true);
   const [fixedResume, setFixedResume] = useState(null);
+
   const glowAnim = useRef(new Animated.Value(0)).current;
   const borderAnim = useRef(new Animated.Value(0)).current;
+  const ctaGlowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
@@ -47,6 +59,23 @@ export default function ResumePreviewScreen({ navigation, route }) {
       })
     ).start();
   }, [borderAnim]);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(ctaGlowAnim, {
+          toValue: 1,
+          duration: 2200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(ctaGlowAnim, {
+          toValue: 0,
+          duration: 2200,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [ctaGlowAnim]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -118,13 +147,21 @@ export default function ResumePreviewScreen({ navigation, route }) {
                   {
                     translateX: glowAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [-30, 30],
+                      outputRange: [-32, 34],
+                    }),
+                  },
+                  {
+                    translateY: glowAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-10, 12],
                     }),
                   },
                 ],
               },
             ]}
           />
+
+          <View style={styles.heroGlowSecondary} />
 
           <View style={styles.aiChip}>
             <Icon name="sparkles-outline" size={14} color={colors.primary} />
@@ -144,14 +181,18 @@ export default function ResumePreviewScreen({ navigation, route }) {
                   {
                     translateX: borderAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [-2, 2],
+                      outputRange: [-4, 4],
                     }),
                   },
                 ],
               }}
             >
               <LinearGradient
-                colors={["#A5B4FC", "#6366F1", "#4F46E5"]}
+                colors={
+                  mode === "dark"
+                    ? ["#C4B5FD", "#818CF8", "#6366F1"]
+                    : ["#A5B4FC", "#6366F1", "#4F46E5"]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
@@ -172,8 +213,8 @@ export default function ResumePreviewScreen({ navigation, route }) {
             <LinearGradient
               colors={
                 mode === "dark"
-                  ? ["rgba(99,102,241,0.45)", "rgba(168,85,247,0.15)", "rgba(255,255,255,0.04)"]
-                  : ["rgba(99,102,241,0.22)", "rgba(168,85,247,0.10)", "rgba(255,255,255,0.85)"]
+                  ? ["rgba(99,102,241,0.48)", "rgba(168,85,247,0.18)", "rgba(255,255,255,0.04)"]
+                  : ["rgba(99,102,241,0.24)", "rgba(168,85,247,0.10)", "rgba(255,255,255,0.92)"]
               }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -196,34 +237,49 @@ export default function ResumePreviewScreen({ navigation, route }) {
           <>
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: spacing.xl }}
+              contentContainerStyle={styles.scrollContent}
             >
               <View style={styles.cardBorderWrap}>
                 <LinearGradient
                   colors={
                     mode === "dark"
-                      ? ["rgba(99,102,241,0.45)", "rgba(168,85,247,0.15)", "rgba(255,255,255,0.04)"]
-                      : ["rgba(99,102,241,0.22)", "rgba(168,85,247,0.10)", "rgba(255,255,255,0.85)"]
+                      ? ["rgba(99,102,241,0.48)", "rgba(168,85,247,0.18)", "rgba(255,255,255,0.04)"]
+                      : ["rgba(99,102,241,0.24)", "rgba(168,85,247,0.10)", "rgba(255,255,255,0.92)"]
                   }
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.cardBorder}
                 >
                   <View style={styles.resumeCard}>
+                    <LinearGradient
+                      colors={
+                        mode === "dark"
+                          ? ["rgba(99,102,241,0.14)", "rgba(168,85,247,0.04)"]
+                          : ["rgba(99,102,241,0.08)", "rgba(168,85,247,0.02)"]
+                      }
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.resumeTopAccent}
+                    />
+
+                    <View style={styles.resumeOrb} />
+
                     <View style={styles.headerBlock}>
+                      <View style={styles.previewBadge}>
+                        <Icon name="checkmark-circle" size={13} color="#4F46E5" />
+                        <Text style={styles.previewBadgeText}>AI Refined</Text>
+                      </View>
+
                       <Text style={styles.nameText}>
                         {fixedResume?.fullName || "Your Name"}
                       </Text>
+
                       <Text style={styles.roleText}>
                         {fixedResume?.jobTitle || "Professional Title"}
                       </Text>
 
                       <Text style={styles.contactText}>
-                        {[
-                          fixedResume?.email,
-                          fixedResume?.phone,
-                          fixedResume?.location,
-                        ]
+                        {[fixedResume?.email, fixedResume?.phone, fixedResume?.location]
                           .filter(Boolean)
                           .join(" • ")}
                       </Text>
@@ -322,32 +378,58 @@ export default function ResumePreviewScreen({ navigation, route }) {
               </View>
             </ScrollView>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.primaryBtn,
-                pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] },
-              ]}
-              onPress={() =>
-                navigation.navigate("TemplateSelect", {
-                  file,
-                  analysis,
-                  fixedResume,
-                })
-              }
-            >
-              <LinearGradient
-                colors={
-                  mode === "dark"
-                    ? ["#6366F1", "#7C3AED"]
-                    : ["#6366F1", "#4F46E5"]
+            <View style={styles.ctaWrap}>
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.ctaGlow,
+                  {
+                    opacity: ctaGlowAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.18, 0.34],
+                    }),
+                    transform: [
+                      {
+                        scale: ctaGlowAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.96, 1.04],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  pressed && { opacity: 0.96, transform: [{ scale: 0.985 }] },
+                ]}
+                onPress={() =>
+                  navigation.navigate("TemplateSelect", {
+                    file,
+                    analysis,
+                    fixedResume,
+                  })
                 }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.primaryGradient}
               >
-                <Text style={styles.primaryBtnText}>Choose Template</Text>
-              </LinearGradient>
-            </Pressable>
+                <LinearGradient
+                  colors={
+                    mode === "dark"
+                      ? ["#7C83FF", "#6366F1", "#5B21B6"]
+                      : ["#7C83FF", "#6366F1", "#4F46E5"]
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.primaryGradient}
+                >
+                  <View style={styles.primaryBtnInner}>
+                    <Text style={styles.primaryBtnText}>Choose Template</Text>
+                    <Icon name="arrow-forward" size={18} color="#FFFFFF" />
+                  </View>
+                </LinearGradient>
+              </Pressable>
+            </View>
           </>
         )}
       </View>
@@ -355,34 +437,111 @@ export default function ResumePreviewScreen({ navigation, route }) {
   );
 }
 
-const makeStyles = (colors, mode) =>
+const makeStyles = (colors, mode, insets) =>
   StyleSheet.create({
     safe: {
       flex: 1,
       backgroundColor: colors.bg,
     },
+
     container: {
       flex: 1,
       backgroundColor: colors.bg,
-      padding: spacing.xl,
-      paddingBottom: 0,
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.xl,
     },
-    loadingTitle: {
-      color: colors.text,
-      fontSize: 24,
+
+    scrollContent: {
+      paddingBottom: 18,
+    },
+
+    hero: {
+      marginTop: 2,
+      marginBottom: spacing.md,
+      position: "relative",
+      overflow: "visible",
+    },
+
+    heroGlow: {
+      position: "absolute",
+      top: -172,
+      left: -132,
+      width: 372,
+      height: 372,
+      borderRadius: 372,
+      backgroundColor: "#6366F1",
+      opacity: mode === "dark" ? 0.13 : 0.08,
+    },
+
+    heroGlowSecondary: {
+      position: "absolute",
+      top: 8,
+      right: -40,
+      width: 140,
+      height: 140,
+      borderRadius: 140,
+      backgroundColor: mode === "dark" ? "rgba(168,85,247,0.08)" : "rgba(168,85,247,0.05)",
+    },
+
+    aiChip: {
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 13,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: colors.subtle,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 16,
+
+      shadowColor: "#6366F1",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: mode === "dark" ? 0.18 : 0.08,
+      shadowRadius: 18,
+      elevation: 3,
+    },
+
+    aiChipText: {
+      color: colors.primary,
+      fontSize: 12,
       fontWeight: "800",
-      letterSpacing: -0.5,
+      letterSpacing: 0.2,
     },
-    loadingText: {
+
+    heading: {
+      color: colors.text,
+      fontSize: 31,
+      fontWeight: "900",
+      lineHeight: 35,
+      letterSpacing: -1.2,
+    },
+
+    subheading: {
       color: colors.mutedText,
-      fontSize: 15,
-      lineHeight: 24,
-      marginTop: spacing.sm,
+      marginTop: 10,
+      marginBottom: spacing.md,
+      fontSize: 16,
+      lineHeight: 25,
+      maxWidth: "95%",
     },
+
+    cardBorderWrap: {
+      borderRadius: 32,
+      marginTop: 4,
+      marginBottom: 8,
+    },
+
+    cardBorder: {
+      borderRadius: 32,
+      padding: 1.2,
+    },
+
     resumeCard: {
       backgroundColor: "#FFFFFF",
-      borderRadius: 28,
-      paddingTop: 28,
+      borderRadius: 30,
+      paddingTop: 24,
       paddingBottom: 28,
       paddingHorizontal: 24,
       borderWidth: 1,
@@ -391,10 +550,28 @@ const makeStyles = (colors, mode) =>
       overflow: "hidden",
 
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 16 },
-      shadowOpacity: mode === "dark" ? 0.16 : 0.08,
-      shadowRadius: 26,
-      elevation: 6,
+      shadowOffset: { width: 0, height: 18 },
+      shadowOpacity: mode === "dark" ? 0.18 : 0.09,
+      shadowRadius: 28,
+      elevation: 8,
+    },
+
+    resumeTopAccent: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 92,
+    },
+
+    resumeOrb: {
+      position: "absolute",
+      top: -18,
+      right: -18,
+      width: 104,
+      height: 104,
+      borderRadius: 104,
+      backgroundColor: "rgba(99,102,241,0.07)",
     },
 
     headerBlock: {
@@ -403,38 +580,64 @@ const makeStyles = (colors, mode) =>
       borderBottomColor: "#E5E7EB",
       marginBottom: 22,
     },
+
+    previewBadge: {
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: "#EEF2FF",
+      borderWidth: 1,
+      borderColor: "#E0E7FF",
+      marginBottom: 14,
+    },
+
+    previewBadgeText: {
+      color: "#4338CA",
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 0.25,
+    },
+
     nameText: {
-      fontSize: 30,
+      fontSize: 31,
       fontWeight: "900",
       color: "#111827",
-      letterSpacing: -0.6,
-      lineHeight: 34,
+      letterSpacing: -0.7,
+      lineHeight: 35,
     },
+
     roleText: {
-      marginTop: 6,
-      fontSize: 15,
+      marginTop: 7,
+      fontSize: 16,
       fontWeight: "800",
       color: "#4F46E5",
       letterSpacing: 0.2,
     },
+
     contactText: {
-      marginTop: 10,
+      marginTop: 11,
       fontSize: 12,
-      lineHeight: 19,
+      lineHeight: 20,
       color: "#6B7280",
     },
 
     section: {
       marginBottom: 22,
     },
+
     sectionTitle: {
       fontSize: 12,
       fontWeight: "900",
-      letterSpacing: 1.1,
+      letterSpacing: 1.2,
       textTransform: "uppercase",
       color: "#111827",
-      marginBottom: 10,
+      marginBottom: 11,
     },
+
     sectionBody: {
       fontSize: 14,
       lineHeight: 24,
@@ -444,12 +647,14 @@ const makeStyles = (colors, mode) =>
     entryBlock: {
       marginBottom: 16,
     },
+
     entryTopRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
       gap: spacing.md,
     },
+
     entryTitle: {
       flex: 1,
       fontSize: 15,
@@ -457,18 +662,21 @@ const makeStyles = (colors, mode) =>
       color: "#111827",
       lineHeight: 20,
     },
+
     entrySubtitle: {
       marginTop: 5,
       fontSize: 13,
       fontWeight: "700",
       color: "#4B5563",
     },
+
     entryMeta: {
       fontSize: 12,
       fontWeight: "700",
       color: "#6B7280",
       marginLeft: 10,
     },
+
     bulletText: {
       marginTop: 7,
       fontSize: 14,
@@ -481,113 +689,25 @@ const makeStyles = (colors, mode) =>
       flexWrap: "wrap",
       gap: 10,
     },
+
     skillChip: {
       backgroundColor: "#EEF2FF",
       borderRadius: 999,
-      paddingHorizontal: 12,
+      paddingHorizontal: 13,
       paddingVertical: 8,
       borderWidth: 1,
       borderColor: "#E0E7FF",
     },
+
     skillChipText: {
       color: "#4338CA",
       fontSize: 12,
       fontWeight: "800",
     },
 
-    primaryBtn: {
-      height: 58,
-      borderRadius: 18,
-      overflow: "hidden",
-      marginTop: spacing.lg,
-
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: mode === "dark" ? 0.18 : 0.08,
-      shadowRadius: 22,
-      elevation: 6,
-    },
-
-    primaryGradient: {
-      flex: 1,
-      width: "100%",
-      borderRadius: 18,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    primaryBtnText: {
-      color: "white",
-      fontSize: 17,
-      fontWeight: "800",
-      letterSpacing: -0.2,
-    },
-    hero: {
-      marginTop: 8,
-      marginBottom: spacing.lg,
-      position: "relative",
-    },
-
-    heroGlow: {
-      position: "absolute",
-      top: -160,
-      left: -120,
-      width: 360,
-      height: 360,
-      borderRadius: 360,
-      backgroundColor: "#6366F1",
-      opacity: 0.07,
-    },
-
-    aiChip: {
-      alignSelf: "flex-start",
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: 999,
-      backgroundColor: colors.subtle,
-      borderWidth: 1,
-      borderColor: colors.border,
-      marginBottom: 16,
-    },
-
-    aiChipText: {
-      color: colors.primary,
-      fontSize: 12,
-      fontWeight: "700",
-    },
-
-    heading: {
-      color: colors.text,
-      fontSize: 30,
-      fontWeight: "800",
-      lineHeight: 34,
-      letterSpacing: -1,
-    },
-
-    subheading: {
-      color: colors.mutedText,
-      marginTop: spacing.sm,
-      marginBottom: spacing.lg,
-      fontSize: 16,
-      lineHeight: 22,
-      maxWidth: "95%",
-    },
-
-    cardBorderWrap: {
-      borderRadius: 30,
-      marginTop: 8,
-    },
-
-    cardBorder: {
-      borderRadius: 30,
-      padding: 1.2,
-    },
-
     loadingCard: {
       backgroundColor: colors.card,
-      borderRadius: 24,
+      borderRadius: 26,
       padding: spacing.xl,
       borderWidth: 1,
       borderColor: mode === "dark" ? "rgba(255,255,255,0.04)" : colors.border,
@@ -618,5 +738,70 @@ const makeStyles = (colors, mode) =>
       color: colors.primary,
       fontSize: 12,
       fontWeight: "700",
+    },
+
+    loadingTitle: {
+      color: colors.text,
+      fontSize: 24,
+      fontWeight: "800",
+      letterSpacing: -0.5,
+    },
+
+    loadingText: {
+      color: colors.mutedText,
+      fontSize: 15,
+      lineHeight: 24,
+      marginTop: spacing.sm,
+    },
+
+    ctaWrap: {
+      position: "relative",
+      paddingTop: 4,
+      paddingBottom: Math.max(insets.bottom + 6, 16),
+    },
+
+    ctaGlow: {
+      position: "absolute",
+      left: 18,
+      right: 18,
+      bottom: Math.max(insets.bottom + 16, 26),
+      height: 66,
+      borderRadius: 24,
+      backgroundColor: "#6366F1",
+      opacity: 0.24,
+    },
+
+    primaryBtn: {
+      height: 60,
+      borderRadius: 20,
+      overflow: "hidden",
+
+      shadowColor: "#4F46E5",
+      shadowOffset: { width: 0, height: 14 },
+      shadowOpacity: mode === "dark" ? 0.34 : 0.18,
+      shadowRadius: 24,
+      elevation: 8,
+    },
+
+    primaryGradient: {
+      flex: 1,
+      width: "100%",
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    primaryBtnInner: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+    },
+
+    primaryBtnText: {
+      color: "#FFFFFF",
+      fontSize: 18,
+      fontWeight: "900",
+      letterSpacing: -0.25,
     },
   });

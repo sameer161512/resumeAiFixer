@@ -1,11 +1,15 @@
-import React, { useMemo, useEffect, useRef, useState } from "react";
+import React, { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import { View, Text, StyleSheet, Pressable, ScrollView, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/Ionicons";
 
 import { useTheme } from "../theme/ThemeContext";
 import spacing from "../theme/spacing";
 import LinearGradient from "react-native-linear-gradient";
+
+const ANALYSIS_HISTORY_KEY = "analysis_history";
 
 export default function DashboardScreen({ navigation }) {
   const { colors, mode } = useTheme();
@@ -16,6 +20,7 @@ export default function DashboardScreen({ navigation }) {
   const [avgAts, setAvgAts] = useState(0);
   const [analyzedCount, setAnalyzedCount] = useState(0);
   const [lastScore, setLastScore] = useState(0);
+  const [recent, setRecent] = useState([]);
 
   useEffect(() => {
     Animated.loop(
@@ -32,20 +37,60 @@ export default function DashboardScreen({ navigation }) {
         }),
       ])
     ).start();
-
-    const getRandomInt = (min, max) =>
-      Math.floor(Math.random() * (max - min + 1)) + min;
-
-    setAvgAts(getRandomInt(65, 92));
-    setAnalyzedCount(getRandomInt(1, 12));
-    setLastScore(getRandomInt(68, 95));
   }, [glowAnim]);
 
-  const recent = [
-    { id: "1", title: "Software Engineer Resume", score: 78, date: "Today" },
-    { id: "2", title: "Product Manager Resume", score: 71, date: "Yesterday" },
-    { id: "3", title: "Data Analyst Resume", score: 83, date: "3 days ago" },
-  ];
+  const loadAnalysisHistory = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(ANALYSIS_HISTORY_KEY);
+      const parsed = stored ? JSON.parse(stored) : [];
+
+      setRecent(parsed);
+
+      if (parsed.length > 0) {
+        const totalScore = parsed.reduce(
+          (sum, item) => sum + (Number(item.score) || 0),
+          0
+        );
+        const average = Math.round(totalScore / parsed.length);
+
+        setAvgAts(average);
+        setAnalyzedCount(parsed.length);
+        setLastScore(Number(parsed[0]?.score) || 0);
+      } else {
+        setAvgAts(0);
+        setAnalyzedCount(0);
+        setLastScore(0);
+      }
+    } catch (error) {
+      console.log("Failed to load analysis history:", error);
+      setRecent([]);
+      setAvgAts(0);
+      setAnalyzedCount(0);
+      setLastScore(0);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadAnalysisHistory();
+    }, [])
+  );
+
+  const formatHistoryDate = (dateString) => {
+    if (!dateString) return "Recently";
+
+    const now = new Date();
+    const date = new Date(dateString);
+
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+
+    return date.toLocaleDateString();
+  };
 
   function ScorePill({ score }) {
     const tone =
@@ -281,37 +326,57 @@ export default function DashboardScreen({ navigation }) {
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Text style={styles.sectionTitle}>Recent analyses</Text>
-              <Pressable>
+              <Pressable onPress={() => navigation.navigate("History")}>
                 <Text style={styles.link}>View all</Text>
               </Pressable>
             </View>
 
-            {recent.map((r, index) => {
-              const isLast = index === recent.length - 1;
+            {recent.length === 0 ? (
+              <View style={styles.emptyStateWrap}>
+                <Text style={styles.emptyStateTitle}>No history yet</Text>
+                <Text style={styles.emptyStateText}>
+                  Your analyzed resumes will appear here.
+                </Text>
+              </View>
+            ) : (
+              recent.slice(0, 3).map((r, index) => {
+                const isLast = index === recent.slice(0, 3).length - 1;
+                const displayTitle =
+                  r.roleName ||
+                  r.targetRole ||
+                  r.title ||
+                  "Resume Analysis";
 
-              return (
-                <Pressable
-                  key={r.id}
-                  onPress={() =>
-                    navigation.navigate("Results", { file: { name: r.title } })
-                  }
-                  style={({ pressed }) => [
-                    styles.recentRow,
-                    !isLast && styles.recentRowBorder,
-                    pressed && { opacity: 0.9 },
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.recentTitle} numberOfLines={1}>
-                      {r.title}
-                    </Text>
-                    <Text style={styles.recentMeta}>{r.date}</Text>
-                  </View>
+                return (
+                  <Pressable
+                    key={r.id || index.toString()}
+                    onPress={() =>
+                      navigation.navigate("Results", {
+                        file: { name: displayTitle },
+                        score: Number(r.score) || 0,
+                        analysis: r.analysis || null,
+                      })
+                    }
+                    style={({ pressed }) => [
+                      styles.recentRow,
+                      !isLast && styles.recentRowBorder,
+                      pressed && { opacity: 0.9 },
+                    ]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.recentTitle} numberOfLines={1}>
+                        {displayTitle}
+                      </Text>
+                      <Text style={styles.recentMeta}>
+                        {formatHistoryDate(r.createdAt)}
+                      </Text>
+                    </View>
 
-                  <ScorePill score={r.score} />
-                </Pressable>
-              );
-            })}
+                    <ScorePill score={Number(r.score) || 0} />
+                  </Pressable>
+                );
+              })
+            )}
           </View>
 
           <View style={styles.tipCard}>
@@ -624,6 +689,24 @@ const makeStyles = (colors, mode) =>
     scoreText: {
       fontSize: 12,
       fontWeight: "900",
+    },
+
+    emptyStateWrap: {
+      paddingVertical: 18,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    emptyStateTitle: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: "800",
+      marginBottom: 6,
+    },
+    emptyStateText: {
+      color: colors.mutedText,
+      fontSize: 13,
+      textAlign: "center",
+      lineHeight: 20,
     },
 
     secondaryBtn: {

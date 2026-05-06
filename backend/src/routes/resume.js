@@ -11,7 +11,7 @@ const router = express.Router();
 const upload = multer({
   dest: "tmp/",
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10 MB
+    fileSize: 10 * 1024 * 1024,
   },
 });
 
@@ -30,8 +30,74 @@ function cleanText(text = "") {
 function getMimeType(ext) {
   if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
   if (ext === ".png") return "image/png";
-  if (ext === ".webp") return "image/webp";
   return "application/octet-stream";
+}
+
+function extractJsonString(rawText = "") {
+  if (!rawText || typeof rawText !== "string") return "";
+
+  let text = rawText.trim();
+
+  text = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "");
+  text = text.replace(/\s*```$/i, "").trim();
+
+  if (
+    (text.startsWith("{") && text.endsWith("}")) ||
+    (text.startsWith("[") && text.endsWith("]"))
+  ) {
+    return text;
+  }
+
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    return text.slice(firstBrace, lastBrace + 1).trim();
+  }
+
+  const firstBracket = text.indexOf("[");
+  const lastBracket = text.lastIndexOf("]");
+
+  if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+    return text.slice(firstBracket, lastBracket + 1).trim();
+  }
+
+  return text;
+}
+
+function safeJsonParse(rawText = "") {
+  const cleaned = extractJsonString(rawText);
+  return JSON.parse(cleaned);
+}
+
+function isRetryableGeminiError(err) {
+  const message = err?.message || "";
+  return (
+    message.includes("503") ||
+    message.includes("UNAVAILABLE") ||
+    message.includes("high demand") ||
+    message.includes("overloaded") ||
+    message.includes("Service Unavailable")
+  );
+}
+
+async function generateWithRetry(payload, label = "Gemini request", maxRetries = 3) {
+  let attempts = 0;
+
+  while (attempts < maxRetries) {
+    try {
+      return await ai.models.generateContent(payload);
+    } catch (err) {
+      attempts++;
+
+      if (!isRetryableGeminiError(err) || attempts >= maxRetries) {
+        throw err;
+      }
+
+      console.log(`${label} failed. Retrying... attempt ${attempts}`);
+      await new Promise((resolve) => setTimeout(resolve, 1500 * attempts));
+    }
+  }
 }
 
 async function extractResumeText(filePath, originalName) {
@@ -64,14 +130,16 @@ router.post("/analyze", upload.single("resume"), async (req, res) => {
     }
 
     const ext = path.extname(originalName).toLowerCase();
-    const isImage = [".jpg", ".jpeg", ".png", ".webp"].includes(ext);
+
+    // ✅ WEBP removed because it can fail on real iPhone uploads / Gemini image handling
+    const isImage = [".jpg", ".jpeg", ".png"].includes(ext);
     const isDocument = [".pdf", ".docx"].includes(ext);
 
     if (!isImage && !isDocument) {
       return res.status(400).json({
         ok: false,
         message:
-          "Only PDF, DOCX, JPG, JPEG, PNG, and WEBP files are supported right now.",
+          "Only PDF, DOCX, JPG, JPEG, and PNG files are supported right now. Please convert WEBP images to JPG or PNG.",
       });
     }
 
@@ -123,26 +191,29 @@ Rules:
       const base64Image = buffer.toString("base64");
       const mimeType = getMimeType(ext);
 
-      geminiResponse = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: prompt },
-              {
-                inlineData: {
-                  mimeType,
-                  data: base64Image,
+      geminiResponse = await generateWithRetry(
+        {
+          model: "gemini-2.5-flash",
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType,
+                    data: base64Image,
+                  },
                 },
-              },
-            ],
+              ],
+            },
+          ],
+          config: {
+            responseMimeType: "application/json",
           },
-        ],
-        config: {
-          responseMimeType: "application/json",
         },
-      });
+        "Analyze image"
+      );
     } else {
       const resumeText = await extractResumeText(tempPath, originalName);
 
@@ -150,34 +221,40 @@ Rules:
         return res.status(400).json({
           ok: false,
           message:
-            "Could not extract text from this file. Upload a text-based PDF or DOCX, or use an image.",
+            "Could not extract text from this file. Upload a text-based PDF or DOCX, or use a JPG/PNG image.",
         });
       }
 
-      geminiResponse = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: `${prompt}\n\nResume content:\n\n${resumeText}`,
-              },
-            ],
+      geminiResponse = await generateWithRetry(
+        {
+          model: "gemini-2.5-flash",
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: `${prompt}\n\nResume content:\n\n${resumeText}`,
+                },
+              ],
+            },
+          ],
+          config: {
+            responseMimeType: "application/json",
           },
-        ],
-        config: {
-          responseMimeType: "application/json",
         },
-      });
+        "Analyze document"
+      );
     }
 
-    const raw = geminiResponse.text || "";
+    const raw = geminiResponse?.text || "";
     let analysis;
 
     try {
-      analysis = JSON.parse(raw);
+      analysis = safeJsonParse(raw);
     } catch (parseError) {
+      console.error("Gemini invalid JSON:", parseError);
+      console.error("Raw Gemini response:", raw);
+
       return res.status(500).json({
         ok: false,
         message: "Gemini returned invalid JSON. Try again.",
@@ -191,9 +268,12 @@ Rules:
     });
   } catch (error) {
     console.error("Resume analyze error:", error);
-    return res.status(500).json({
+
+    return res.status(isRetryableGeminiError(error) ? 503 : 500).json({
       ok: false,
-      message: error.message || "Resume analysis failed.",
+      message: isRetryableGeminiError(error)
+        ? "AI is busy right now. Please try again in a few seconds."
+        : error?.message || "Resume analysis failed. Please try again.",
     });
   } finally {
     if (tempPath && fs.existsSync(tempPath)) {
@@ -262,35 +342,27 @@ Rules:
 - Keep it realistic and clean.
 - Use modern concise wording.
 - If exact details are missing, infer carefully and keep them generic.
+- Do not add markdown.
+- Do not wrap in triple backticks.
+- Return only pure JSON.
 `;
 
-    let aiResponse;
-    let attempts = 0;
+    const aiResponse = await generateWithRetry(
+      {
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+        },
+      },
+      "Fix resume"
+    );
 
-    while (attempts < 3) {
-      try {
-        aiResponse = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: prompt,
-        });
-        break; // success → exit loop
-      } catch (err) {
-        attempts++;
-
-        if (attempts >= 3) {
-          throw err; // fail after 3 tries
-        }
-
-        console.log("Retrying Gemini...", attempts);
-        await new Promise((res) => setTimeout(res, 1500)); // wait 1.5 sec
-      }
-    }
-
-    const raw = aiResponse.text || "";
+    const raw = aiResponse?.text || "";
     let parsed;
 
     try {
-      parsed = JSON.parse(raw);
+      parsed = safeJsonParse(raw);
     } catch {
       return res.status(500).json({
         ok: false,
@@ -302,13 +374,16 @@ Rules:
     return res.json({
       ok: true,
       fileName,
-      fixedResume: parsed.fixedResume,
+      fixedResume: parsed?.fixedResume || null,
     });
   } catch (error) {
     console.error("Resume fix error:", error);
-    return res.status(500).json({
+
+    return res.status(isRetryableGeminiError(error) ? 503 : 500).json({
       ok: false,
-      message: error.message || "Failed to generate fixed resume.",
+      message: isRetryableGeminiError(error)
+        ? "AI is busy right now. Please try again in a few seconds."
+        : error?.message || "Failed to generate fixed resume.",
     });
   }
 });
@@ -346,7 +421,7 @@ router.post("/generate-from-scratch", async (req, res) => {
     const prompt = `
 You are an expert ATS resume writer.
 
-Create a professional resume in JSON format using the user's details below.
+Create a polished, realistic, ATS-friendly fresher resume in JSON format using the user's details below.
 
 User details:
 - Full Name: ${fullName}
@@ -368,49 +443,51 @@ Return ONLY valid JSON in this exact structure:
   "phone": "",
   "location": "",
   "summary": "",
-  "skills": [],
+  "skills": ["", ""],
   "experience": [],
-  "projects": [],
-  "education": []
+  "projects": [
+    {
+      "title": "",
+      "description": ""
+    }
+  ],
+  "education": [
+    {
+      "degree": "",
+      "institution": "",
+      "year": ""
+    }
+  ]
 }
 
 Rules:
-- Make the summary strong, professional, and ATS-friendly.
-- Convert skills into a clean array.
-- If real work experience is not provided, keep "experience" as an empty array.
-- Convert projects into array objects like:
-  { "name": "...", "details": ["...", "..."] }
-- Convert education into array objects like:
-  { "degree": "...", "school": "...", "year": "..." }
+- Make the summary strong, professional, concise, and ATS-friendly.
+- Keep fullName, targetRole, email, phone exactly aligned with the provided user details.
 - Use the provided city as "location".
+- Convert skills into a clean array of strings.
+- If real work experience is not provided, keep "experience" as an empty array.
+- Convert projects into array objects using exactly:
+  { "title": "...", "description": "..." }
+- Convert education into array objects using exactly:
+  { "degree": "...", "institution": "...", "year": "..." }
+- Infer institution and year carefully from the provided education text when possible.
+- If institution or year is not clearly available, keep them as empty strings instead of inventing wrong details.
+- Projects description must be meaningful and not empty.
 - Do not add markdown.
 - Do not wrap in triple backticks.
+- Return only pure JSON.
 `;
 
-    let aiResponse;
-    let attempts = 0;
-
-    while (attempts < 3) {
-      try {
-        aiResponse = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-          },
-        });
-        break;
-      } catch (err) {
-        attempts++;
-
-        if (attempts >= 3) {
-          throw err;
-        }
-
-        console.log("Retrying generate-from-scratch Gemini...", attempts);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-      }
-    }
+    const aiResponse = await generateWithRetry(
+      {
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+        },
+      },
+      "Generate from scratch"
+    );
 
     const rawText = aiResponse?.text?.trim();
 
@@ -423,10 +500,11 @@ Rules:
     let parsedResume;
 
     try {
-      parsedResume = JSON.parse(rawText);
+      parsedResume = safeJsonParse(rawText);
     } catch (parseError) {
       console.log("AI JSON parse error:", parseError);
       console.log("Raw AI response:", rawText);
+
       return res.status(500).json({
         message: "AI returned invalid JSON",
         raw: rawText,
@@ -439,8 +517,11 @@ Rules:
     });
   } catch (error) {
     console.log("generate-from-scratch error:", error);
-    return res.status(500).json({
-      message: error?.message || "Something went wrong",
+
+    return res.status(isRetryableGeminiError(error) ? 503 : 500).json({
+      message: isRetryableGeminiError(error)
+        ? "AI is busy right now. Please try again in a few seconds."
+        : error?.message || "Something went wrong",
     });
   }
 });

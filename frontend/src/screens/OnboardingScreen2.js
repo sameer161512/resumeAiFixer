@@ -6,22 +6,22 @@ import {
   Animated,
   StatusBar,
   Pressable,
+  ScrollView,
 } from "react-native";
 import LinearGradient from "react-native-linear-gradient";
 import Icon from "react-native-vector-icons/Ionicons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeContext";
-import spacing from "../theme/spacing";
 
 export default function OnboardingScreen2({ navigation }) {
   const { mode } = useTheme();
   const styles = useMemo(() => makeStyles(mode), [mode]);
 
   const cardOpacity = useRef(new Animated.Value(0)).current;
-  const cardY = useRef(new Animated.Value(30)).current;
+  const cardY = useRef(new Animated.Value(24)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
-  const textY = useRef(new Animated.Value(24)).current;
-  const glowScale = useRef(new Animated.Value(0.9)).current;
+  const textY = useRef(new Animated.Value(22)).current;
+  const glowScale = useRef(new Animated.Value(0.92)).current;
   const glowOpacity = useRef(new Animated.Value(0.34)).current;
   const scanAnim = useRef(new Animated.Value(0)).current;
 
@@ -39,13 +39,13 @@ export default function OnboardingScreen2({ navigation }) {
       }),
       Animated.timing(textOpacity, {
         toValue: 1,
-        duration: 900,
+        duration: 850,
         delay: 180,
         useNativeDriver: true,
       }),
       Animated.timing(textY, {
         toValue: 0,
-        duration: 900,
+        duration: 850,
         delay: 180,
         useNativeDriver: true,
       }),
@@ -63,12 +63,12 @@ export default function OnboardingScreen2({ navigation }) {
       ]),
       Animated.sequence([
         Animated.timing(glowOpacity, {
-          toValue: 0.48,
+          toValue: 0.46,
           duration: 1200,
           useNativeDriver: true,
         }),
         Animated.timing(glowOpacity, {
-          toValue: 0.38,
+          toValue: 0.36,
           duration: 1000,
           useNativeDriver: true,
         }),
@@ -93,15 +93,15 @@ export default function OnboardingScreen2({ navigation }) {
 
   const scanWidth = scanAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["12%", "100%"],
+    outputRange: ["16%", "100%"],
   });
 
   return (
     <LinearGradient
       colors={
         mode === "dark"
-          ? ["#050816", "#0D1320", "#11182A"]
-          : ["#F8FAFC", "#EEF2FF", "#E0F2FE"]
+          ? ["#060A16", "#0B1220", "#10192D"]
+          : ["#F8FAFC", "#EEF2FF", "#E0E7FF"]
       }
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -114,150 +114,181 @@ export default function OnboardingScreen2({ navigation }) {
       />
 
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => navigation.replace("Login")}>
-            <Text style={styles.skipTop}>Skip</Text>
-          </Pressable>
-        </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+        >
+          <View style={styles.headerRow}>
+            <Pressable onPress={() => navigation.replace("Login")} hitSlop={10}>
+              <Text style={styles.skipTop}>Skip</Text>
+            </Pressable>
+          </View>
 
-        <View style={styles.heroSection}>
+          <View style={styles.heroSection}>
+            <Animated.View
+              style={[
+                styles.glow,
+                {
+                  opacity: glowOpacity,
+                  transform: [{ scale: glowScale }],
+                },
+              ]}
+            />
+
+            <Animated.View
+              style={[
+                styles.previewCard,
+                {
+                  opacity: cardOpacity,
+                  transform: [{ translateY: cardY }],
+                },
+              ]}
+            >
+              <View style={styles.topRightBadgeRow}>
+                <View style={styles.inlineBadge}>
+                  <Icon name="analytics-outline" size={13} color="#FFFFFF" />
+                  <Text style={styles.inlineBadgeText}>Live AI Analysis</Text>
+                </View>
+              </View>
+
+              <View style={styles.previewTop}>
+                <View style={styles.iconWrap}>
+                  <Icon name="sparkles-outline" size={28} color="#FFFFFF" />
+                </View>
+
+                <View style={styles.topTextWrap}>
+                  <Text style={styles.previewEyebrow}>STEP 2</Text>
+                  <Text style={styles.previewTitle}>Analyze and{"\n"}Improve</Text>
+                </View>
+              </View>
+
+              <View style={styles.scoreStrip}>
+                <View style={styles.scoreLeft}>
+                  <Text style={styles.scoreLabel}>ATS Score</Text>
+                  <Text style={styles.scoreValue}>82</Text>
+                </View>
+
+                <View style={styles.scorePill}>
+                  <Text style={styles.scorePillText}>Strong Match</Text>
+                </View>
+              </View>
+
+              <View style={styles.scanCard}>
+                <View style={styles.scanHeaderRow}>
+                  <Text style={styles.scanLabel}>Analysis Running</Text>
+
+                  <View style={styles.livePill}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveText}>LIVE</Text>
+                  </View>
+                </View>
+
+                <View style={styles.progressTrack}>
+                  <Animated.View
+                    style={[styles.progressFill, { width: scanWidth }]}
+                  />
+                </View>
+
+                <View style={styles.metricsList}>
+                  <View style={styles.metricRow}>
+                    <View style={styles.metricLeft}>
+                      <Icon name="checkmark-circle" size={16} color="#22C55E" />
+                      <Text style={styles.metricText}>ATS Scan</Text>
+                    </View>
+                    <Text style={styles.metricStatus}>Done</Text>
+                  </View>
+
+                  <View style={styles.metricRow}>
+                    <View style={styles.metricLeft}>
+                      <Icon name="checkmark-circle" size={16} color="#22C55E" />
+                      <Text style={styles.metricText}>Grammar Check</Text>
+                    </View>
+                    <Text style={styles.metricStatus}>Done</Text>
+                  </View>
+
+                  <View style={styles.metricRow}>
+                    <View style={styles.metricLeft}>
+                      <Icon
+                        name="time-outline"
+                        size={16}
+                        color={mode === "dark" ? "#C7D2FE" : "#4F46E5"}
+                      />
+                      <Text style={styles.metricText}>Keywords Match</Text>
+                    </View>
+                    <Text style={styles.metricPending}>Scanning</Text>
+                  </View>
+
+                  <View style={styles.metricRow}>
+                    <View style={styles.metricLeft}>
+                      <Icon
+                        name="ellipse-outline"
+                        size={16}
+                        color={mode === "dark" ? "#94A3B8" : "#64748B"}
+                      />
+                      <Text style={styles.metricText}>Formatting</Text>
+                    </View>
+                    <Text style={styles.metricMuted}>Queued</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.tipRow}>
+                <View style={styles.tipIconWrap}>
+                  <Icon
+                    name="bulb-outline"
+                    size={16}
+                    color={mode === "dark" ? "#A5B4FC" : "#4F46E5"}
+                  />
+                </View>
+                <Text style={styles.tipText}>
+                  AI suggestions improve wording, clarity, structure, and impact.
+                </Text>
+              </View>
+            </Animated.View>
+          </View>
+
           <Animated.View
             style={[
-              styles.glow,
+              styles.contentSection,
               {
-                opacity: glowOpacity,
-                transform: [{ scale: glowScale }],
-              },
-            ]}
-          />
-
-          <Animated.View
-            style={[
-              styles.previewCard,
-              {
-                opacity: cardOpacity,
-                transform: [{ translateY: cardY }],
+                opacity: textOpacity,
+                transform: [{ translateY: textY }],
               },
             ]}
           >
-            <View style={styles.previewTop}>
-              <View style={styles.iconWrap}>
-                <Icon name="sparkles-outline" size={28} color="#FFFFFF" />
-              </View>
-
-              <View style={styles.topTextWrap}>
-                <Text style={styles.previewEyebrow}>STEP 2</Text>
-                <Text style={styles.previewTitle}>AI Analysis</Text>
-              </View>
+            <View style={styles.dotsWrap}>
+              <View style={styles.dot} />
+              <View style={[styles.dot, styles.activeDot]} />
+              <View style={styles.dot} />
             </View>
 
-            <View style={styles.scanCard}>
-              <View style={styles.scanHeaderRow}>
-                <Text style={styles.scanLabel}>Analysis Running</Text>
-                <View style={styles.livePill}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>LIVE</Text>
-                </View>
-              </View>
+            <Text style={styles.title}>Get smart resume insights instantly</Text>
 
-              <View style={styles.progressTrack}>
-                <Animated.View
-                  style={[styles.progressFill, { width: scanWidth }]}
-                />
-              </View>
+            <Text style={styles.subtitle}>
+              AIRESUMEASSISTANT checks ATS strength, grammar, keywords, and
+              formatting, then shows what to fix so your resume feels stronger and
+              more job-ready.
+            </Text>
 
-              <View style={styles.metricsList}>
-                <View style={styles.metricRow}>
-                  <View style={styles.metricLeft}>
-                    <Icon
-                      name="checkmark-circle"
-                      size={16}
-                      color="#22C55E"
-                    />
-                    <Text style={styles.metricText}>ATS Scan</Text>
-                  </View>
-                  <Text style={styles.metricStatus}>Done</Text>
-                </View>
+            <View style={styles.buttonRow}>
+              <Pressable
+                onPress={() => navigation.replace("Login")}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>Skip</Text>
+              </Pressable>
 
-                <View style={styles.metricRow}>
-                  <View style={styles.metricLeft}>
-                    <Icon
-                      name="checkmark-circle"
-                      size={16}
-                      color="#22C55E"
-                    />
-                    <Text style={styles.metricText}>Grammar Check</Text>
-                  </View>
-                  <Text style={styles.metricStatus}>Done</Text>
-                </View>
-
-                <View style={styles.metricRow}>
-                  <View style={styles.metricLeft}>
-                    <Icon
-                      name="time-outline"
-                      size={16}
-                      color={mode === "dark" ? "#C7D2FE" : "#4F46E5"}
-                    />
-                    <Text style={styles.metricText}>Keywords Match</Text>
-                  </View>
-                  <Text style={styles.metricPending}>Scanning</Text>
-                </View>
-
-                <View style={styles.metricRow}>
-                  <View style={styles.metricLeft}>
-                    <Icon
-                      name="ellipse-outline"
-                      size={16}
-                      color={mode === "dark" ? "#94A3B8" : "#64748B"}
-                    />
-                    <Text style={styles.metricText}>Formatting</Text>
-                  </View>
-                  <Text style={styles.metricMuted}>Queued</Text>
-                </View>
-              </View>
+              <Pressable
+                onPress={() => navigation.navigate("Onboarding3")}
+                style={styles.primaryButton}
+              >
+                <Text style={styles.primaryButtonText}>Next</Text>
+                <Icon name="arrow-forward" size={18} color="#FFFFFF" />
+              </Pressable>
             </View>
           </Animated.View>
-        </View>
-
-        <Animated.View
-          style={[
-            styles.contentSection,
-            {
-              opacity: textOpacity,
-              transform: [{ translateY: textY }],
-            },
-          ]}
-        >
-          <View style={styles.dotsWrap}>
-            <View style={styles.dot} />
-            <View style={[styles.dot, styles.activeDot]} />
-            <View style={styles.dot} />
-          </View>
-
-          <Text style={styles.title}>Get smart AI insights</Text>
-
-          <Text style={styles.subtitle}>
-            Our AI checks ATS strength, grammar, keywords and formatting to
-            reveal exactly what needs improvement.
-          </Text>
-
-          <View style={styles.buttonRow}>
-            <Pressable
-              onPress={() => navigation.replace("Login")}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonText}>Skip</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => navigation.navigate("Onboarding3")}
-              style={styles.primaryButton}
-            >
-              <Text style={styles.primaryButtonText}>Next</Text>
-              <Icon name="arrow-forward" size={18} color="#FFFFFF" />
-            </Pressable>
-          </View>
-        </Animated.View>
+        </ScrollView>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -272,11 +303,19 @@ const makeStyles = (mode) =>
     safe: {
       flex: 1,
       paddingHorizontal: 24,
+      paddingTop: 8,
+    },
+
+    scrollContent: {
+      paddingBottom: 28,
     },
 
     headerRow: {
-      paddingTop: 6,
+      paddingTop: 8,
+      paddingRight: 2,
       alignItems: "flex-end",
+      zIndex: 20,
+      marginBottom: 8,
     },
 
     skipTop: {
@@ -286,20 +325,21 @@ const makeStyles = (mode) =>
     },
 
     heroSection: {
-      flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      marginTop: -10,
+      position: "relative",
+      marginTop: 0,
     },
 
     glow: {
       position: "absolute",
+      top: 26,
       width: 320,
       height: 320,
       borderRadius: 160,
       backgroundColor:
-        mode === "dark" ? "rgba(79,70,229,0.22)" : "rgba(79,70,229,0.12)",
-      shadowColor: mode === "dark" ? "#6366F1" : "#4F46E5",
+        mode === "dark" ? "rgba(79,70,229,0.22)" : "rgba(99,102,241,0.14)",
+      shadowColor: "#6366F1",
       shadowOpacity: 1,
       shadowRadius: 50,
       shadowOffset: { width: 0, height: 0 },
@@ -309,7 +349,9 @@ const makeStyles = (mode) =>
     previewCard: {
       width: "100%",
       borderRadius: 30,
-      padding: 22,
+      paddingHorizontal: 22,
+      paddingTop: 14,
+      paddingBottom: 16,
       backgroundColor:
         mode === "dark" ? "rgba(21,28,46,0.92)" : "rgba(255,255,255,0.88)",
       borderWidth: 1,
@@ -322,10 +364,43 @@ const makeStyles = (mode) =>
       elevation: 10,
     },
 
-    previewTop: {
+    topRightBadgeRow: {
+      width: "100%",
+      alignItems: "flex-end",
+      marginBottom: 8,
+    },
+
+    inlineBadge: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 22,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      borderRadius: 999,
+      backgroundColor:
+        mode === "dark" ? "rgba(99,102,241,0.22)" : "rgba(99,102,241,0.90)",
+      borderWidth: 1,
+      borderColor:
+        mode === "dark"
+          ? "rgba(255,255,255,0.08)"
+          : "rgba(255,255,255,0.30)",
+      shadowColor: "#6366F1",
+      shadowOpacity: 0.18,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+
+    inlineBadgeText: {
+      marginLeft: 6,
+      color: "#FFFFFF",
+      fontSize: 12,
+      fontWeight: "700",
+    },
+
+    previewTop: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginBottom: 16,
     },
 
     iconWrap: {
@@ -345,6 +420,7 @@ const makeStyles = (mode) =>
 
     topTextWrap: {
       flex: 1,
+      paddingTop: 2,
     },
 
     previewEyebrow: {
@@ -352,13 +428,63 @@ const makeStyles = (mode) =>
       fontWeight: "800",
       letterSpacing: 1.4,
       color: mode === "dark" ? "#94A3B8" : "#64748B",
-      marginBottom: 4,
+      marginBottom: 6,
     },
 
     previewTitle: {
       fontSize: 24,
+      lineHeight: 30,
       fontWeight: "800",
       color: mode === "dark" ? "#F8FAFC" : "#0F172A",
+    },
+
+    scoreStrip: {
+      marginBottom: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderRadius: 18,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor:
+        mode === "dark" ? "rgba(99,102,241,0.10)" : "rgba(99,102,241,0.08)",
+      borderWidth: 1,
+      borderColor:
+        mode === "dark" ? "rgba(99,102,241,0.18)" : "rgba(99,102,241,0.14)",
+    },
+
+    scoreLeft: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+    },
+
+    scoreLabel: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: mode === "dark" ? "#C7D2FE" : "#4F46E5",
+      marginRight: 10,
+      marginBottom: 3,
+    },
+
+    scoreValue: {
+      fontSize: 26,
+      fontWeight: "800",
+      color: mode === "dark" ? "#F8FAFC" : "#0F172A",
+      lineHeight: 28,
+    },
+
+    scorePill: {
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor:
+        mode === "dark" ? "rgba(34,197,94,0.16)" : "rgba(34,197,94,0.12)",
+    },
+
+    scorePillText: {
+      fontSize: 12,
+      fontWeight: "800",
+      color: "#22C55E",
     },
 
     scanCard: {
@@ -466,15 +592,49 @@ const makeStyles = (mode) =>
       color: mode === "dark" ? "#94A3B8" : "#64748B",
     },
 
+    tipRow: {
+      marginTop: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 14,
+      borderRadius: 18,
+      backgroundColor:
+        mode === "dark" ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)",
+      borderWidth: 1,
+      borderColor:
+        mode === "dark" ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.05)",
+    },
+
+    tipIconWrap: {
+      width: 34,
+      height: 34,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 10,
+      backgroundColor:
+        mode === "dark" ? "rgba(99,102,241,0.10)" : "rgba(99,102,241,0.08)",
+    },
+
+    tipText: {
+      flex: 1,
+      fontSize: 12.5,
+      lineHeight: 19,
+      fontWeight: "600",
+      color: mode === "dark" ? "#CBD5E1" : "#475569",
+    },
+
     contentSection: {
-      paddingBottom: 10,
+      paddingTop: 16,
+      paddingBottom: 12,
     },
 
     dotsWrap: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: 22,
+      marginTop: 10,
+      marginBottom: 16,
     },
 
     dot: {
@@ -492,16 +652,17 @@ const makeStyles = (mode) =>
     },
 
     title: {
-      fontSize: 34,
-      lineHeight: 40,
+      fontSize: 25,
+      lineHeight: 31,
       fontWeight: "800",
       letterSpacing: 0.2,
       color: mode === "dark" ? "#F8FAFC" : "#0F172A",
       textAlign: "center",
+      paddingHorizontal: 8,
     },
 
     subtitle: {
-      marginTop: 12,
+      marginTop: 10,
       fontSize: 15,
       lineHeight: 24,
       fontWeight: "500",
@@ -511,7 +672,7 @@ const makeStyles = (mode) =>
     },
 
     buttonRow: {
-      marginTop: 30,
+      marginTop: 28,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",

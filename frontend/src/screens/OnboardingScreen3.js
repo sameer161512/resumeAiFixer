@@ -6,6 +6,7 @@ import {
   Animated,
   StatusBar,
   Pressable,
+  ScrollView,
 } from "react-native";
 import LinearGradient from "react-native-linear-gradient";
 import Icon from "react-native-vector-icons/Ionicons";
@@ -74,7 +75,7 @@ export default function OnboardingScreen3({ navigation }) {
         }),
       ]),
       Animated.timing(scoreAnim, {
-        toValue: 78,
+        toValue: 86,
         duration: 1400,
         useNativeDriver: false,
       }),
@@ -99,8 +100,8 @@ export default function OnboardingScreen3({ navigation }) {
     <LinearGradient
       colors={
         mode === "dark"
-          ? ["#050816", "#0D1320", "#11182A"]
-          : ["#F8FAFC", "#EEF2FF", "#E0F2FE"]
+          ? ["#060A16", "#0B1220", "#10192D"]
+          : ["#F8FAFC", "#EEF2FF", "#E0E7FF"]
       }
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -113,109 +114,148 @@ export default function OnboardingScreen3({ navigation }) {
       />
 
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={handleFinish}>
-            <Text style={styles.skipTop}>Skip</Text>
-          </Pressable>
-        </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+        >
+          <View style={styles.headerRow}>
+            <Pressable onPress={handleFinish} hitSlop={10}>
+              <Text style={styles.skipTop}>Skip</Text>
+            </Pressable>
+          </View>
 
-        <View style={styles.heroSection}>
+          <View style={styles.heroSection}>
+            <Animated.View
+              style={[
+                styles.glow,
+                {
+                  opacity: glowOpacity,
+                  transform: [{ scale: glowScale }],
+                },
+              ]}
+            />
+
+            <Animated.View
+              style={[
+                styles.previewCard,
+                {
+                  opacity: cardOpacity,
+                  transform: [{ translateY: cardY }],
+                },
+              ]}
+            >
+              <View style={styles.badgeRow}>
+                <View style={styles.successBadge}>
+                  <Icon name="checkmark-circle" size={16} color="#22C55E" />
+                  <Text style={styles.successText}>Resume Improved</Text>
+                </View>
+
+                <View style={styles.templateBadge}>
+                  <Icon name="layers-outline" size={15} color="#4F46E5" />
+                  <Text style={styles.templateText}>Modern Template</Text>
+                </View>
+              </View>
+
+              <View style={styles.inlineTopRow}>
+                <Text style={styles.scoreLabel}>FINAL ATS SCORE</Text>
+
+                <View style={styles.inlineBadge}>
+                  <Icon name="checkmark-done-outline" size={13} color="#FFFFFF" />
+                  <Text style={styles.inlineBadgeText}>Ready to Apply</Text>
+                </View>
+              </View>
+
+              <Text style={styles.scoreValue}>86/100</Text>
+
+              <View style={styles.progressBar}>
+                <Animated.View
+                  style={[styles.progressFill, { width: progressWidth }]}
+                />
+              </View>
+
+              <View style={styles.metricsRow}>
+                <View style={styles.metricCard}>
+                  <View style={styles.metricIconWrap}>
+                    <Icon name="document-text-outline" size={18} color="#4F46E5" />
+                  </View>
+                  <Text style={styles.metricTitle}>Grammar</Text>
+                  <Text style={styles.metricSub}>Improved</Text>
+                </View>
+
+                <View style={styles.metricCard}>
+                  <View style={styles.metricIconWrap}>
+                    <Icon name="trending-up-outline" size={18} color="#4F46E5" />
+                  </View>
+                  <Text style={styles.metricTitle}>Keywords</Text>
+                  <Text style={styles.metricSub}>Optimized</Text>
+                </View>
+
+                <View style={styles.metricCard}>
+                  <View style={styles.metricIconWrap}>
+                    <Icon name="color-wand-outline" size={18} color="#4F46E5" />
+                  </View>
+                  <Text style={styles.metricTitle}>Template</Text>
+                  <Text style={styles.metricSub}>Applied</Text>
+                </View>
+              </View>
+
+              <View style={styles.bottomActionCard}>
+                <View style={styles.bottomActionLeft}>
+                  <View style={styles.downloadIconWrap}>
+                    <Icon
+                      name="download-outline"
+                      size={18}
+                      color={mode === "dark" ? "#A5B4FC" : "#4F46E5"}
+                    />
+                  </View>
+
+                  <View style={styles.bottomActionContent}>
+                    <Text style={styles.bottomActionTitle}>Download Ready</Text>
+                    <Text style={styles.bottomActionSub}>
+                      Export and share your polished resume in a few taps.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </Animated.View>
+          </View>
+
           <Animated.View
             style={[
-              styles.glow,
+              styles.contentSection,
               {
-                opacity: glowOpacity,
-                transform: [{ scale: glowScale }],
-              },
-            ]}
-          />
-
-          <Animated.View
-            style={[
-              styles.previewCard,
-              {
-                opacity: cardOpacity,
-                transform: [{ translateY: cardY }],
+                opacity: textOpacity,
+                transform: [{ translateY: textY }],
               },
             ]}
           >
-            <View style={styles.badgeRow}>
-              <View style={styles.successBadge}>
-                <Icon name="checkmark-circle" size={16} color="#22C55E" />
-                <Text style={styles.successText}>Resume Improved</Text>
-              </View>
+            <View style={styles.dotsWrap}>
+              <View style={styles.dot} />
+              <View style={styles.dot} />
+              <View style={[styles.dot, styles.activeDot]} />
             </View>
 
-            <Text style={styles.scoreLabel}>ATS SCORE</Text>
-            <Text style={styles.scoreValue}>78/100</Text>
+            <Text style={styles.title}>Polish, choose a template, and download</Text>
 
-            <View style={styles.progressBar}>
-              <Animated.View
-                style={[styles.progressFill, { width: progressWidth }]}
-              />
-            </View>
+            <Text style={styles.subtitle}>
+              AIRESUMEASSISTANT helps you turn insights into a stronger final
+              resume with better wording, cleaner structure, templates, and a
+              polished version ready to share.
+            </Text>
 
-            <View style={styles.metricsRow}>
-              <View style={styles.metricCard}>
-                <View style={styles.metricIconWrap}>
-                  <Icon name="document-text-outline" size={18} color="#4F46E5" />
-                </View>
-                <Text style={styles.metricTitle}>Grammar</Text>
-                <Text style={styles.metricSub}>Improved</Text>
-              </View>
+            <View style={styles.buttonRow}>
+              <Pressable onPress={handleFinish} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>Skip</Text>
+              </Pressable>
 
-              <View style={styles.metricCard}>
-                <View style={styles.metricIconWrap}>
-                  <Icon name="trending-up-outline" size={18} color="#4F46E5" />
-                </View>
-                <Text style={styles.metricTitle}>Keywords</Text>
-                <Text style={styles.metricSub}>Optimized</Text>
-              </View>
-
-              <View style={styles.metricCard}>
-                <View style={styles.metricIconWrap}>
-                  <Icon name="download-outline" size={18} color="#4F46E5" />
-                </View>
-                <Text style={styles.metricTitle}>Resume</Text>
-                <Text style={styles.metricSub}>Ready</Text>
-              </View>
+              <Pressable onPress={handleFinish} style={styles.primaryButton}>
+                <Text style={styles.primaryButtonText}>Get Started</Text>
+                <Icon name="arrow-forward" size={18} color="#FFFFFF" />
+              </Pressable>
             </View>
           </Animated.View>
-        </View>
-
-        <Animated.View
-          style={[
-            styles.contentSection,
-            {
-              opacity: textOpacity,
-              transform: [{ translateY: textY }],
-            },
-          ]}
-        >
-          <View style={styles.dotsWrap}>
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-            <View style={[styles.dot, styles.activeDot]} />
-          </View>
-
-          <Text style={styles.title}>Improve and download with confidence</Text>
-
-          <Text style={styles.subtitle}>
-            Turn feedback into a stronger, cleaner resume and download a more
-            polished version in just a few taps.
-          </Text>
-
-          <View style={styles.buttonRow}>
-            <Pressable onPress={handleFinish} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Skip</Text>
-            </Pressable>
-
-            <Pressable onPress={handleFinish} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Get Started</Text>
-              <Icon name="arrow-forward" size={18} color="#FFFFFF" />
-            </Pressable>
-          </View>
-        </Animated.View>
+        </ScrollView>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -230,11 +270,19 @@ const makeStyles = (mode) =>
     safe: {
       flex: 1,
       paddingHorizontal: 24,
+      paddingTop: 6,
+    },
+
+    scrollContent: {
+      paddingBottom: 28,
     },
 
     headerRow: {
-      paddingTop: 6,
+      paddingTop: 10,
+      paddingRight: 2,
       alignItems: "flex-end",
+      zIndex: 20,
+      marginBottom: 8,
     },
 
     skipTop: {
@@ -244,20 +292,21 @@ const makeStyles = (mode) =>
     },
 
     heroSection: {
-      flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      marginTop: -10,
+      position: "relative",
+      marginTop: 0,
     },
 
     glow: {
       position: "absolute",
+      top: 28,
       width: 320,
       height: 320,
       borderRadius: 160,
       backgroundColor:
-        mode === "dark" ? "rgba(79,70,229,0.22)" : "rgba(79,70,229,0.12)",
-      shadowColor: mode === "dark" ? "#6366F1" : "#4F46E5",
+        mode === "dark" ? "rgba(79,70,229,0.22)" : "rgba(99,102,241,0.14)",
+      shadowColor: "#6366F1",
       shadowOpacity: 1,
       shadowRadius: 50,
       shadowOffset: { width: 0, height: 0 },
@@ -267,7 +316,9 @@ const makeStyles = (mode) =>
     previewCard: {
       width: "100%",
       borderRadius: 30,
-      padding: 22,
+      paddingHorizontal: 22,
+      paddingTop: 18,
+      paddingBottom: 18,
       backgroundColor:
         mode === "dark" ? "rgba(21,28,46,0.92)" : "rgba(255,255,255,0.88)",
       borderWidth: 1,
@@ -281,13 +332,18 @@ const makeStyles = (mode) =>
     },
 
     badgeRow: {
-      alignItems: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       marginBottom: 18,
+      gap: 10,
     },
 
     successBadge: {
+      flex: 1,
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "center",
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 999,
@@ -302,12 +358,67 @@ const makeStyles = (mode) =>
       color: "#22C55E",
     },
 
+    templateBadge: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor:
+        mode === "dark" ? "rgba(99,102,241,0.12)" : "rgba(99,102,241,0.08)",
+    },
+
+    templateText: {
+      marginLeft: 6,
+      fontSize: 12,
+      fontWeight: "800",
+      color: "#4F46E5",
+    },
+
+    inlineTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 8,
+      gap: 12,
+    },
+
     scoreLabel: {
       fontSize: 12,
       fontWeight: "800",
       letterSpacing: 1.6,
       color: mode === "dark" ? "#94A3B8" : "#64748B",
-      marginBottom: 6,
+      flex: 1,
+    },
+
+    inlineBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      borderRadius: 999,
+      backgroundColor:
+        mode === "dark" ? "rgba(99,102,241,0.22)" : "rgba(99,102,241,0.90)",
+      borderWidth: 1,
+      borderColor:
+        mode === "dark"
+          ? "rgba(255,255,255,0.08)"
+          : "rgba(255,255,255,0.30)",
+      shadowColor: "#6366F1",
+      shadowOpacity: 0.18,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+
+    inlineBadgeText: {
+      marginLeft: 6,
+      color: "#FFFFFF",
+      fontSize: 12,
+      fontWeight: "700",
     },
 
     scoreValue: {
@@ -337,6 +448,7 @@ const makeStyles = (mode) =>
       flexDirection: "row",
       justifyContent: "space-between",
       gap: 10,
+      marginBottom: 16,
     },
 
     metricCard: {
@@ -380,15 +492,61 @@ const makeStyles = (mode) =>
       textAlign: "center",
     },
 
+    bottomActionCard: {
+      borderRadius: 18,
+      padding: 14,
+      backgroundColor:
+        mode === "dark" ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)",
+      borderWidth: 1,
+      borderColor:
+        mode === "dark" ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.05)",
+    },
+
+    bottomActionLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+
+    bottomActionContent: {
+      flex: 1,
+    },
+
+    downloadIconWrap: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+      backgroundColor:
+        mode === "dark" ? "rgba(99,102,241,0.10)" : "rgba(99,102,241,0.08)",
+    },
+
+    bottomActionTitle: {
+      fontSize: 13,
+      fontWeight: "800",
+      color: mode === "dark" ? "#E2E8F0" : "#0F172A",
+      marginBottom: 2,
+    },
+
+    bottomActionSub: {
+      fontSize: 12.5,
+      lineHeight: 18,
+      fontWeight: "600",
+      color: mode === "dark" ? "#94A3B8" : "#64748B",
+    },
+
     contentSection: {
-      paddingBottom: 10,
+      paddingTop: 16,
+      paddingBottom: 12,
     },
 
     dotsWrap: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: 22,
+      marginTop: 10,
+      marginBottom: 16,
     },
 
     dot: {
@@ -406,16 +564,17 @@ const makeStyles = (mode) =>
     },
 
     title: {
-      fontSize: 34,
-      lineHeight: 40,
+      fontSize: 25,
+      lineHeight: 31,
       fontWeight: "800",
       letterSpacing: 0.2,
       color: mode === "dark" ? "#F8FAFC" : "#0F172A",
       textAlign: "center",
+      paddingHorizontal: 8,
     },
 
     subtitle: {
-      marginTop: 12,
+      marginTop: 10,
       fontSize: 15,
       lineHeight: 24,
       fontWeight: "500",
@@ -425,7 +584,7 @@ const makeStyles = (mode) =>
     },
 
     buttonRow: {
-      marginTop: 30,
+      marginTop: 28,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",

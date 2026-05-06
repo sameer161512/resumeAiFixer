@@ -7,6 +7,9 @@ import { analyzeResumeApi } from "../config/api";
 import LinearGradient from "react-native-linear-gradient";
 import MaskedView from "@react-native-masked-view/masked-view";
 import Icon from "react-native-vector-icons/Ionicons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const ANALYSIS_HISTORY_KEY = "analysis_history";
 
 const STEPS = [
   { key: "ats", label: "ATS Scan", desc: "Checking structure, sections & parsing…" },
@@ -14,6 +17,22 @@ const STEPS = [
   { key: "keywords", label: "Keywords", desc: "Matching role keywords & impact…" },
   { key: "format", label: "Formatting", desc: "Consistency, spacing & readability…" },
 ];
+
+const saveAnalysisToHistory = async (item) => {
+  try {
+    const existing = await AsyncStorage.getItem(ANALYSIS_HISTORY_KEY);
+    const parsed = existing ? JSON.parse(existing) : [];
+
+    const updated = [item, ...parsed];
+
+    await AsyncStorage.setItem(
+      ANALYSIS_HISTORY_KEY,
+      JSON.stringify(updated.slice(0, 20))
+    );
+  } catch (error) {
+    console.log("Failed to save analysis history:", error);
+  }
+};
 
 export default function AnalyzeScreen({ navigation, route }) {
   const { colors, mode } = useTheme();
@@ -118,6 +137,23 @@ export default function AnalyzeScreen({ navigation, route }) {
         const result = await analyzeResumeApi(file);
 
         if (!isMounted) return;
+
+        await saveAnalysisToHistory({
+          id: Date.now().toString(),
+          title: file?.name || "Resume Analysis",
+          roleName:
+            result?.analysis?.targetRole ||
+            result?.analysis?.role ||
+            result?.analysis?.jobRole ||
+            "",
+          score:
+            result?.analysis?.overallScore ??
+            result?.analysis?.atsScore ??
+            result?.analysis?.scores?.overall ??
+            0,
+          createdAt: new Date().toISOString(),
+          analysis: result?.analysis || null,
+        });
 
         navigation.replace("Results", {
           file,

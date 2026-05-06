@@ -7,36 +7,85 @@ import Icon from "react-native-vector-icons/Ionicons";
 import LinearGradient from "react-native-linear-gradient";
 import MaskedView from "@react-native-masked-view/masked-view";
 
-
 export default function ResultsScreen({ navigation, route }) {
   const { colors, mode } = useTheme();
   const styles = useMemo(() => makeStyles(colors, mode), [colors, mode]);
+
   const file = route?.params?.file || null;
   const analysis = route?.params?.analysis || null;
+  const savedScore = route?.params?.score ?? null;
+
   const glowAnim = useRef(new Animated.Value(0)).current;
   const borderAnim = useRef(new Animated.Value(0)).current;
 
-  const score = analysis?.overallScore ?? 78;
+  const score =
+    analysis?.overallScore ??
+    analysis?.atsScore ??
+    analysis?.scores?.overall ??
+    savedScore ??
+    78;
+
+  const grammarScore =
+    analysis?.scores?.clarity ??
+    analysis?.grammarScore ??
+    0;
+
+  const keywordsScore =
+    analysis?.scores?.keywords ??
+    analysis?.keywordsScore ??
+    0;
+
+  const formattingScore =
+    analysis?.scores?.formatting ??
+    analysis?.formattingScore ??
+    0;
 
   const summaryChips = [
-    { label: "Grammar", value: (analysis?.scores?.clarity ?? 0) >= 75 ? "Good" : "Needs work" },
-    { label: "Keywords", value: (analysis?.scores?.keywords ?? 0) >= 75 ? "Strong" : (analysis?.scores?.keywords ?? 0) >= 50 ? "Medium" : "Low" },
-    { label: "Formatting", value: (analysis?.scores?.formatting ?? 0) >= 75 ? "Strong" : "Needs work" },
+    {
+      label: "Grammar",
+      value: grammarScore >= 75 ? "Good" : grammarScore >= 50 ? "Medium" : "Needs work",
+    },
+    {
+      label: "Keywords",
+      value: keywordsScore >= 75 ? "Strong" : keywordsScore >= 50 ? "Medium" : "Low",
+    },
+    {
+      label: "Formatting",
+      value: formattingScore >= 75 ? "Strong" : formattingScore >= 50 ? "Medium" : "Needs work",
+    },
   ];
 
   const fixes =
     analysis?.suggestions?.length
       ? analysis.suggestions.map((item, index) => ({
-        title: item,
-        note: analysis?.weaknesses?.[index] || "Recommended improvement based on AI analysis.",
-        level: index < 2 ? "High" : index < 4 ? "Medium" : "Low",
-      }))
+          title: item,
+          note:
+            analysis?.weaknesses?.[index] ||
+            "Recommended improvement based on AI analysis.",
+          level: index < 2 ? "High" : index < 4 ? "Medium" : "Low",
+        }))
       : [
-        { title: "Add stronger section headings", note: "Use: Summary, Experience, Projects, Skills.", level: "High" },
-        { title: "Add measurable impact", note: "Include numbers: +20%, 10k users, ₹5L saved.", level: "High" },
-        { title: "Improve keyword match", note: "Add role keywords in skills + bullets naturally.", level: "Medium" },
-        { title: "Shorten long bullet points", note: "Aim 1–2 lines per bullet for readability.", level: "Low" },
-      ];
+          {
+            title: "Add stronger section headings",
+            note: "Use: Summary, Experience, Projects, Skills.",
+            level: "High",
+          },
+          {
+            title: "Add measurable impact",
+            note: "Include numbers: +20%, 10k users, ₹5L saved.",
+            level: "High",
+          },
+          {
+            title: "Improve keyword match",
+            note: "Add role keywords in skills + bullets naturally.",
+            level: "Medium",
+          },
+          {
+            title: "Shorten long bullet points",
+            note: "Aim 1–2 lines per bullet for readability.",
+            level: "Low",
+          },
+        ];
 
   const scoreLabel = useMemo(() => {
     if (score >= 85) return { text: "Excellent", tone: "success" };
@@ -50,8 +99,9 @@ export default function ResultsScreen({ navigation, route }) {
     scoreLabel.tone === "success"
       ? colors.success
       : scoreLabel.tone === "warning"
-        ? colors.warning
-        : colors.danger;
+      ? colors.warning
+      : colors.danger;
+
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -67,7 +117,7 @@ export default function ResultsScreen({ navigation, route }) {
         }),
       ])
     ).start();
-  }, []);
+  }, [glowAnim]);
 
   useEffect(() => {
     Animated.loop(
@@ -77,22 +127,22 @@ export default function ResultsScreen({ navigation, route }) {
         useNativeDriver: false,
       })
     ).start();
-  }, []);
+  }, [borderAnim]);
 
   function LevelTag({ level }) {
     const bg =
       level === "High"
         ? "rgba(239,68,68,0.12)"
         : level === "Medium"
-          ? "rgba(245,158,11,0.14)"
-          : colors.subtle;
+        ? "rgba(245,158,11,0.14)"
+        : colors.subtle;
 
     const fg =
       level === "High"
         ? "#EF4444"
         : level === "Medium"
-          ? "#F59E0B"
-          : colors.mutedText;
+        ? "#F59E0B"
+        : colors.mutedText;
 
     return (
       <View style={[styles.tag, { backgroundColor: bg }]}>
@@ -103,9 +153,15 @@ export default function ResultsScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Results" onBack={() => navigation.replace("UploadResume")} />
+      <ScreenHeader
+        title="Results"
+        onBack={() => navigation.replace("UploadResume")}
+      />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: spacing.xl }}
+      >
         <View style={styles.hero}>
           <Animated.View
             style={[
@@ -153,7 +209,7 @@ export default function ResultsScreen({ navigation, route }) {
                 end={{ x: 1, y: 0 }}
               >
                 <Text style={[styles.heading, { opacity: 0 }]}>
-                  Your resume{"\n"}score
+                  Your Resume{"\n"}Score
                 </Text>
               </LinearGradient>
             </Animated.View>
@@ -163,7 +219,7 @@ export default function ResultsScreen({ navigation, route }) {
             {file?.name ? `Analyzed: ${file.name}` : "Your resume analysis is ready."}
           </Text>
         </View>
-        {/* HERO SCORE CARD */}
+
         <View style={styles.cardBorderWrap}>
           <LinearGradient
             colors={
@@ -222,7 +278,6 @@ export default function ResultsScreen({ navigation, route }) {
           </LinearGradient>
         </View>
 
-        {/* TOP FIXES */}
         <View style={styles.cardBorderWrap}>
           <LinearGradient
             colors={
@@ -239,8 +294,12 @@ export default function ResultsScreen({ navigation, route }) {
 
               {fixes.map((f, index) => {
                 const isLast = index === fixes.length - 1;
+
                 return (
-                  <View key={`${f.title}-${index}`} style={[styles.fixRow, isLast && { borderBottomWidth: 0 }]}>
+                  <View
+                    key={`${f.title}-${index}`}
+                    style={[styles.fixRow, isLast && { borderBottomWidth: 0 }]}
+                  >
                     <View style={{ flex: 1 }}>
                       <View style={styles.fixTitleRow}>
                         <Text style={styles.fixTitle}>{f.title}</Text>
@@ -255,33 +314,32 @@ export default function ResultsScreen({ navigation, route }) {
           </LinearGradient>
         </View>
 
-        {/* CTA */}
-       <Pressable
-  onPress={() =>
-    navigation.navigate("ResumePreview", {
-      file,
-      analysis,
-    })
-  }
-  style={({ pressed }) => [
-    styles.primaryBtn,
-    { marginTop: spacing.lg },
-    pressed && { opacity: 0.9 },
-  ]}
->
-  <LinearGradient
-    colors={
-      mode === "dark"
-        ? ["#6366F1", "#7C3AED"]
-        : ["#6366F1", "#4F46E5"]
-    }
-    start={{ x: 0, y: 0 }}
-    end={{ x: 1, y: 1 }}
-    style={styles.primaryGradient}
-  >
-    <Text style={styles.primaryBtnText}>Fix My Resume</Text>
-  </LinearGradient>
-</Pressable>
+        <Pressable
+          onPress={() =>
+            navigation.navigate("ResumePreview", {
+              file,
+              analysis,
+            })
+          }
+          style={({ pressed }) => [
+            styles.primaryBtn,
+            { marginTop: spacing.lg },
+            pressed && { opacity: 0.9 },
+          ]}
+        >
+          <LinearGradient
+            colors={
+              mode === "dark"
+                ? ["#6366F1", "#7C3AED"]
+                : ["#6366F1", "#4F46E5"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.primaryGradient}
+          >
+            <Text style={styles.primaryBtnText}>Fix My Resume</Text>
+          </LinearGradient>
+        </Pressable>
 
         <Pressable
           onPress={() => navigation.replace("UploadResume")}
@@ -290,9 +348,7 @@ export default function ResultsScreen({ navigation, route }) {
           <Text style={styles.secondaryBtnText}>Analyze another resume</Text>
         </Pressable>
       </ScrollView>
-
     </View>
-
   );
 }
 
@@ -303,9 +359,8 @@ const makeStyles = (colors, mode) =>
       backgroundColor: colors.bg,
       padding: spacing.sm,
       paddingTop: spacing.xl,
-      paddingBottom: 0
+      paddingBottom: 0,
     },
-
 
     heading: {
       color: colors.text,
@@ -417,14 +472,13 @@ const makeStyles = (colors, mode) =>
       fontSize: 12,
       fontWeight: "700",
     },
-    chip: {
-      flex: 1,
-      backgroundColor: colors.subtle,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 18,
-      padding: spacing.md,
+    chipValue: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: "800",
+      marginTop: 6,
     },
+
     card: {
       backgroundColor: colors.card,
       borderRadius: 20,
@@ -507,7 +561,7 @@ const makeStyles = (colors, mode) =>
 
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: mode === "dark" ? 0.10 : 0.04,
+      shadowOpacity: mode === "dark" ? 0.1 : 0.04,
       shadowRadius: 16,
       elevation: 3,
     },
@@ -554,11 +608,22 @@ const makeStyles = (colors, mode) =>
       fontWeight: "700",
     },
 
+    cardBorderWrap: {
+      borderRadius: 30,
+      marginTop: 8,
+      marginBottom: spacing.lg,
+    },
+
+    cardBorder: {
+      borderRadius: 30,
+      padding: 1.2,
+    },
+
     primaryGradient: {
-  flex: 1,
-  width: "100%",
-  borderRadius: 18,
-  alignItems: "center",
-  justifyContent: "center",
-},
+      flex: 1,
+      width: "100%",
+      borderRadius: 18,
+      alignItems: "center",
+      justifyContent: "center",
+    },
   });
